@@ -78,3 +78,5 @@
 # trained baseline ResNet50 classifier for 5 severity grades
 
 # built hybrid soft voting ensemble combining ViT and EfficientNet
+
+# Loaded Knee Osteoarthritis X-ray image dataset categorized by Kellgren-Lawrence grades
