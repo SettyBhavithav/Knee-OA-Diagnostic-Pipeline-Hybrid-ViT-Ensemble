@@ -1,0 +1,27 @@
+# Knee Osteoarthritis Diagnostic Pipeline - Python Dependencies
+
+# Core Deep Learning Framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Pretrained Vision Models & Transfer Learning
+timm>=0.9.0
+
+# Explainable AI & Model Interpretability
+captum>=0.6.0
+grad-cam>=1.4.0
+
+# Data Science & Computer Vision Utilities
+numpy>=1.23.0
+scipy>=1.10.0
+scikit-learn>=1.2.0
+opencv-python>=4.7.0
+Pillow>=9.5.0
+
+# Visualization & Reporting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Jupyter Environment & Notebook Support
+jupyter>=1.0.0
+ipywidgets>=8.0.0

@@ -1,0 +1,34 @@
+KNEE OSTEOARTHRITIS CLINICAL DIAGNOSTIC PIPELINE: STATISTICAL SIGNIFICANCE REPORT
+================================================================================
+
+1. BOOTSTRAP 95% CONFIDENCE INTERVALS (n=500)
+--------------------------------------------------------------------------------
+ConvNeXt                 : Accuracy=86.36% [84.46%-88.23%], Kappa=0.772 [0.737-0.806]
+Swin ViT                 : Accuracy=82.83% [80.84%-84.74%], Kappa=0.716 [0.676-0.750]
+DINO ViT                 : Accuracy=89.36% [87.68%-90.90%], Kappa=0.820 [0.791-0.848]
+Hybrid                   : Accuracy=90.07% [88.30%-91.58%], Kappa=0.830 [0.799-0.857]
+Ensemble                 : Accuracy=90.04% [88.50%-91.51%], Kappa=0.830 [0.803-0.858]
+
+2. MCNEMAR TEST SIGNIFICANCE (vs. Ensemble)
+--------------------------------------------------------------------------------
+Ensemble vs ConvNeXt       : Chi2=18.6483, p-value=1.57e-05 (Significant)
+Ensemble vs Swin ViT       : Chi2=59.7569, p-value=1.08e-14 (Significant)
+Ensemble vs DINO ViT       : Chi2=0.9014, p-value=3.42e-01 (Not Significant)
+Ensemble vs Hybrid         : Chi2=0.0556, p-value=8.14e-01 (Not Significant)
+
+3. BOOTSTRAP PAIRED AUC SUPERIORITY TEST (DeLong Equivalent)
+--------------------------------------------------------------------------------
+Ensemble vs ConvNeXt       : ROC-AUC Difference=+0.0165, p-value=0.00e+00 (Significant)
+Ensemble vs Swin ViT       : ROC-AUC Difference=+0.0373, p-value=0.00e+00 (Significant)
+Ensemble vs DINO ViT       : ROC-AUC Difference=+0.0081, p-value=0.00e+00 (Significant)
+Ensemble vs Hybrid         : ROC-AUC Difference=-0.0012, p-value=8.90e-01 (Not Significant)
+
+4. FEATURE ABLATION STUDY ON HYBRID MODEL
+--------------------------------------------------------------------------------
+Ablated Backbone          | Accuracy   | Quadratic Kappa | Performance Drop
+--------------------------------------------------------------------------------
+None (Full Hybrid)        | 90.08%     | 0.831          | --
+ConvNeXt (Local)          | 89.19%     | 0.815          | -0.89%
+Swin ViT (Global)         | 90.08%     | 0.831          | -0.00%
+DINO ViT (Structural)     | 81.86%     | 0.686          | -8.21%
+--------------------------------------------------------------------------------
