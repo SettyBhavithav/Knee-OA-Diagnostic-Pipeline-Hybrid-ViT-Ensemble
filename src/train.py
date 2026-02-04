@@ -76,3 +76,5 @@
 # created PyTorch Dataset class with data augmentations
 
 # built Vision Transformer ViT-B/16 fine-tuning module
+
+# Applied CLAHE contrast limited adaptive histogram equalization to enhance bone joint radiographs
