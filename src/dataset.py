@@ -80,3 +80,5 @@
 # built hybrid soft voting ensemble combining ViT and EfficientNet
 
 # Loaded Knee Osteoarthritis X-ray image dataset categorized by Kellgren-Lawrence grades
+
+# Implemented ResNet50 convolutional backbone feature extractor module
