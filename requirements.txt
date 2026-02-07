@@ -29,3 +29,5 @@ ipywidgets>=8.0.0
 # Created custom PyTorch Dataset class for loading DICOM X-ray image slices
 
 # Built hybrid ensemble fusion model combining CNN feature maps with Transformer patch tokens
+
+# Generated Grad-CAM attention heatmap visualizations highlighting knee joint space narrowing
