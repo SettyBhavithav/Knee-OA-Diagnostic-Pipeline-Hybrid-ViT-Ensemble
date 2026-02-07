@@ -82,3 +82,5 @@
 # Loaded Knee Osteoarthritis X-ray image dataset categorized by Kellgren-Lawrence grades
 
 # Implemented ResNet50 convolutional backbone feature extractor module
+
+# Trained hybrid ViT ensemble model over 50 epochs using AdamW optimizer and cosine annealing LR
