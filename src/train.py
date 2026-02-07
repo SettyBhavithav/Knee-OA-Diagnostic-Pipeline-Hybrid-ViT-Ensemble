@@ -82,3 +82,5 @@
 # Integrated ViT Vision Transformer architecture with multi-head self-attention layers
 
 # Evaluated model performance measuring accuracy sensitivity specificity and multi-class ROC AUC
+
+# Built Streamlit web interface for uploading DICOM X-ray scans and displaying diagnostic reports
