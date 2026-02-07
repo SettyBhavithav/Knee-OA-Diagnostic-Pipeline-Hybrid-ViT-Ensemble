@@ -4,3 +4,5 @@
 # Configured data augmentation transforms including random rotation horizontal flip and affine jitter
 
 # Calculated cross-entropy classification loss with class weight balancing for KL grade imbalance
+
+# Added 5-fold stratified cross-validation loop to validate model generalization stability
