@@ -31,3 +31,5 @@ ipywidgets>=8.0.0
 # Built hybrid ensemble fusion model combining CNN feature maps with Transformer patch tokens
 
 # Generated Grad-CAM attention heatmap visualizations highlighting knee joint space narrowing
+
+# Rendered confidence score gauge and KL severity grade classification badge in UI layout
