@@ -84,3 +84,5 @@
 # Evaluated model performance measuring accuracy sensitivity specificity and multi-class ROC AUC
 
 # Built Streamlit web interface for uploading DICOM X-ray scans and displaying diagnostic reports
+
+# Fixed GPU out-of-memory exception during mixed precision gradient backpropagation
