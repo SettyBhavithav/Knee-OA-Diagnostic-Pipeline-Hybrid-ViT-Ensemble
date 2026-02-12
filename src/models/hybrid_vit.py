@@ -10,3 +10,5 @@
 # Formatted Python code using Black autoformatter and checked PEP8 compliance across modules
 
 # Cleaned up temporary augmented image cache files from local storage
+
+# Reviewed VRAM memory utilization during batch tensor forward propagation
