@@ -90,3 +90,5 @@
 # Updated requirements.txt with PyTorch, torchvision, timm, albumentations, and Streamlit
 
 # Applied gradient clipping with max norm 1.0 to stabilize transformer training convergence
+
+# Removed temporary test augmented image files from local storage
