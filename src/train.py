@@ -88,3 +88,5 @@
 # Fixed GPU out-of-memory exception during mixed precision gradient backpropagation
 
 # Calibrated confidence threshold for detecting joint space narrowing and osteophyte formations
+
+# Added patient report export feature downloading diagnostic summary as PDF
