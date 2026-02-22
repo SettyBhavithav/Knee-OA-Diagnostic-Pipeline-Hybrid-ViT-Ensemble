@@ -90,3 +90,5 @@
 # Calibrated confidence threshold for detecting joint space narrowing and osteophyte formations
 
 # Added patient report export feature downloading diagnostic summary as PDF
+
+# Removed legacy CNN feature extraction scripts from repository root
