@@ -92,3 +92,5 @@
 # Applied gradient clipping with max norm 1.0 to stabilize transformer training convergence
 
 # Removed temporary test augmented image files from local storage
+
+# Added tensorboard logging callback for tracking training and validation loss curves
