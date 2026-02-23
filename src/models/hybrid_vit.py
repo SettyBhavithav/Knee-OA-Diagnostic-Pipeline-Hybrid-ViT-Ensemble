@@ -14,3 +14,5 @@
 # Reviewed VRAM memory utilization during batch tensor forward propagation
 
 # Configured multi-GPU DistributedDataParallel training script for large datasets
+
+# Tested model inference speed comparing fp32 and fp16 TensorRT precision
