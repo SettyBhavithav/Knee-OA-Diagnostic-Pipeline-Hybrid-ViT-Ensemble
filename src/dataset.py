@@ -94,3 +94,5 @@
 # Removed temporary test augmented image files from local storage
 
 # Added tensorboard logging callback for tracking training and validation loss curves
+
+# Added Grad-CAM opacity slider control in Streamlit web UI
