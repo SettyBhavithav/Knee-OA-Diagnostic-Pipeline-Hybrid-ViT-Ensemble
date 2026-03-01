@@ -24,3 +24,5 @@
 # Added interactive image zoom widget in Streamlit radiograph viewer
 
 # Tested model classification accuracy under varying X-ray exposure conditions
+
+# Verified GPU memory release after concluding model evaluation session
