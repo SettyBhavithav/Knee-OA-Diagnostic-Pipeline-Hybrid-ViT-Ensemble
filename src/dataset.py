@@ -102,3 +102,5 @@
 # Removed temporary benchmark log files from project directory
 
 # Created radiologist user guide modal explaining KL grade classification criteria
+
+# Added fallback CPU inference mode when CUDA GPU is unavailable
