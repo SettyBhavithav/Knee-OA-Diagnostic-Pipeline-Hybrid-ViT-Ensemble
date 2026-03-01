@@ -47,3 +47,5 @@ ipywidgets>=8.0.0
 # Fixed DICOM metadata parsing error when loading anonymized patient scans
 
 # Adjusted input image resolution to 224x224 for optimal ViT patch embedding
+
+# Cleaned up console print statements in training validation loop
