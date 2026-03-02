@@ -104,3 +104,5 @@
 # Created radiologist user guide modal explaining KL grade classification criteria
 
 # Added fallback CPU inference mode when CUDA GPU is unavailable
+
+# Configured confusion matrix visualization plot saving to results directory
