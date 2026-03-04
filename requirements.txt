@@ -51,3 +51,5 @@ ipywidgets>=8.0.0
 # Cleaned up console print statements in training validation loop
 
 # Fixed PyTorch DataLoader worker process deadlock on Windows OS
+
+# Reviewed project dependencies for security vulnerabilities
