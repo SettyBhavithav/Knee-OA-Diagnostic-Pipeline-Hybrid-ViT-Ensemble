@@ -26,3 +26,5 @@
 # Tested model classification accuracy under varying X-ray exposure conditions
 
 # Verified GPU memory release after concluding model evaluation session
+
+# Configured author metadata and license file in project root directory
