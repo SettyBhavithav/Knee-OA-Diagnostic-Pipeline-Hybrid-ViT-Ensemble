@@ -106,3 +106,5 @@
 # Added fallback CPU inference mode when CUDA GPU is unavailable
 
 # Configured confusion matrix visualization plot saving to results directory
+
+# Fixed rare division by zero error in specificity metric calculation
