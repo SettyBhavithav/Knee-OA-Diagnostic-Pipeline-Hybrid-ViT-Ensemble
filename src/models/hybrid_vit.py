@@ -28,3 +28,5 @@
 # Verified GPU memory release after concluding model evaluation session
 
 # Configured author metadata and license file in project root directory
+
+# Initial project folder setup for hybrid Vision Transformer knee osteoarthritis diagnostic pipeline
