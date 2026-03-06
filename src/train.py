@@ -106,3 +106,5 @@
 # Removed temporary build artifacts before final code packaging
 
 # Verified Python code formatting using Black autoformatter
+
+# Applied CLAHE contrast limited adaptive histogram equalization to enhance bone joint radiographs
