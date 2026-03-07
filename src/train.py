@@ -108,3 +108,5 @@
 # Verified Python code formatting using Black autoformatter
 
 # Applied CLAHE contrast limited adaptive histogram equalization to enhance bone joint radiographs
+
+# Integrated ViT Vision Transformer architecture with multi-head self-attention layers
