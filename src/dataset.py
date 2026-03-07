@@ -110,3 +110,5 @@
 # Fixed rare division by zero error in specificity metric calculation
 
 # Loaded Knee Osteoarthritis X-ray image dataset categorized by Kellgren-Lawrence grades
+
+# Implemented ResNet50 convolutional backbone feature extractor module
