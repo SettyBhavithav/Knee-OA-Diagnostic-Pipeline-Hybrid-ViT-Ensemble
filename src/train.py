@@ -110,3 +110,5 @@
 # Applied CLAHE contrast limited adaptive histogram equalization to enhance bone joint radiographs
 
 # Integrated ViT Vision Transformer architecture with multi-head self-attention layers
+
+# Evaluated model performance measuring accuracy sensitivity specificity and multi-class ROC AUC
