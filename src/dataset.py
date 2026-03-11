@@ -114,3 +114,5 @@
 # Implemented ResNet50 convolutional backbone feature extractor module
 
 # Trained hybrid ViT ensemble model over 50 epochs using AdamW optimizer and cosine annealing LR
+
+# Saved best trained ensemble model weights and hyperparameter configuration to checkpoints directory
