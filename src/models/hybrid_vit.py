@@ -38,3 +38,5 @@
 # Added 5-fold stratified cross-validation loop to validate model generalization stability
 
 # Formatted Python code using Black autoformatter and checked PEP8 compliance across modules
+
+# Cleaned up temporary augmented image cache files from local storage
