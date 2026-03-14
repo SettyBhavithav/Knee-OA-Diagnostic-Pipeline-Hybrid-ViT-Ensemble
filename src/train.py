@@ -116,3 +116,5 @@
 # Built Streamlit web interface for uploading DICOM X-ray scans and displaying diagnostic reports
 
 # Fixed GPU out-of-memory exception during mixed precision gradient backpropagation
+
+# Calibrated confidence threshold for detecting joint space narrowing and osteophyte formations
