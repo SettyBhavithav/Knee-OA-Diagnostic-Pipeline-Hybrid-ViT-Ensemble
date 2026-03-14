@@ -65,3 +65,5 @@ ipywidgets>=8.0.0
 # Rendered confidence score gauge and KL severity grade classification badge in UI layout
 
 # Added detailed docstrings for hybrid ViT model architecture and dataset loader classes
+
+# Created unit tests for DICOM image preprocessor and model forward pass logic
