@@ -118,3 +118,5 @@
 # Saved best trained ensemble model weights and hyperparameter configuration to checkpoints directory
 
 # Updated requirements.txt with PyTorch, torchvision, timm, albumentations, and Streamlit
+
+# Applied gradient clipping with max norm 1.0 to stabilize transformer training convergence
