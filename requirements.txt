@@ -69,3 +69,5 @@ ipywidgets>=8.0.0
 # Created unit tests for DICOM image preprocessor and model forward pass logic
 
 # Adjusted learning rate warmup scheduler parameters for AdamW optimizer
+
+# Fixed spatial dimension mismatch bug when concatenating CNN and Transformer feature maps
