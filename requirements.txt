@@ -71,3 +71,5 @@ ipywidgets>=8.0.0
 # Adjusted learning rate warmup scheduler parameters for AdamW optimizer
 
 # Fixed spatial dimension mismatch bug when concatenating CNN and Transformer feature maps
+
+# Cleaned up draft model checkpoint files from training directory
