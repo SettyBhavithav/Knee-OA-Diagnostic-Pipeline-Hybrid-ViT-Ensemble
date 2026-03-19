@@ -46,3 +46,5 @@
 # Configured multi-GPU DistributedDataParallel training script for large datasets
 
 # Tested model inference speed comparing fp32 and fp16 TensorRT precision
+
+# Verified confusion matrix calculation across all 5 Kellgren-Lawrence grades
