@@ -48,3 +48,5 @@
 # Tested model inference speed comparing fp32 and fp16 TensorRT precision
 
 # Verified confusion matrix calculation across all 5 Kellgren-Lawrence grades
+
+# Monitored GPU temperature and VRAM allocation during long training runs
