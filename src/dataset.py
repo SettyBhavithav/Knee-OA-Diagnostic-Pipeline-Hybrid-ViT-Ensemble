@@ -126,3 +126,5 @@
 # Added tensorboard logging callback for tracking training and validation loss curves
 
 # Added Grad-CAM opacity slider control in Streamlit web UI
+
+# Added class imbalance distribution chart in training dashboard modal
