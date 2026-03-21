@@ -130,3 +130,5 @@
 # Added class imbalance distribution chart in training dashboard modal
 
 # Removed temporary benchmark log files from project directory
+
+# Created radiologist user guide modal explaining KL grade classification criteria
