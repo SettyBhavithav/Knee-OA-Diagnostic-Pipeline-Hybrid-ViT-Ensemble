@@ -50,3 +50,5 @@
 # Verified confusion matrix calculation across all 5 Kellgren-Lawrence grades
 
 # Monitored GPU temperature and VRAM allocation during long training runs
+
+# Added interactive image zoom widget in Streamlit radiograph viewer
