@@ -128,3 +128,5 @@
 # Updated README installation guide for configuring PyTorch CUDA environment
 
 # Created unit tests for Grad-CAM visualization overlay generator
+
+# Aligned dark mode color scheme across Streamlit medical dashboard elements
