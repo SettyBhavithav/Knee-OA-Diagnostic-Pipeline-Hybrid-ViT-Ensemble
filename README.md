@@ -1,5 +1,4 @@
 # Hybrid Deep Learning Ensemble with Ordinal-Aware Loss for Knee Osteoarthritis Severity Grading
-
 [![IEEE Paper](https://img.shields.io/badge/Paper-IEEE%20Format-blue.svg)](manuscript/knee_osteoarthritis_paper.tex)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
@@ -30,7 +29,7 @@ Evaluated on an independent, combined evaluation cohort of **4,008 images** (N=9
 
 ## Architecture Overview
 
-`
+```text
                           [ Input Radiograph (224x224) ]
                                         │
            ┌────────────────────────────┼────────────────────────────┐
@@ -48,20 +47,16 @@ Evaluated on an independent, combined evaluation cohort of **4,008 images** (N=9
                                         ▼
                      [ Softmax Output: 3 Severity Tiers ]
                     (Healthy: 0-1, Moderate: 2-3, Severe: 4)
-`
+```
 
 ---
 
 ## Repository Directory Structure
 
-`
+```text
 Knee-OA-Diagnostic-Pipeline-Hybrid-ViT-Ensemble/
 ├── manuscript/
-│   ├── knee_osteoarthritis_paper.tex   # IEEEtran LaTeX source code (55 inline references)
-│   ├── fig2.jpeg                       # Fig 2: Confusion Matrices
-│   ├── fig3.jpeg                       # Fig 3: ROC Curves (Dual-Pass TTA)
-│   ├── fig4.jpeg                       # Fig 4: Multi-Method Explainability Visualizations
-│   └── fig5.jpeg                       # Fig 5: LIME Superpixel Attributions
+│   └── knee_osteoarthritis_paper.tex   # IEEEtran LaTeX source code (55 inline references)
 │
 ├── notebooks/
 │   └── knee_osteoarthritis_xai_and_evaluation.ipynb  # Primary GPU pipeline & XAI notebook
@@ -71,13 +66,9 @@ Knee-OA-Diagnostic-Pipeline-Hybrid-ViT-Ensemble/
 │   ├── verify_datasplit_leakage_free.py              # Patient-level leakage audit tool
 │   ├── run_statistical_tests.py                      # McNemar, Bootstrap CI, DeLong tests
 │   ├── apply_tta_to_koa.py                           # TTA execution script
-│   └── cache_gpu_preds.py                            # GPU probability caching utility
-│
-├── figures/                            # High-Resolution Publication Figures
-│   ├── fig2.jpeg
-│   ├── fig3.jpeg
-│   ├── fig4.jpeg
-│   └── fig5.jpeg
+│   ├── cache_gpu_preds.py                            # GPU probability caching utility
+│   ├── compute_mcnemar_values.py                    # McNemar significance testing
+│   └── compute_ablation_table.py                     # Branch ablation calculator
 │
 ├── reports/
 │   └── q1_journal_comprehensive_report.md            # Comprehensive audit & validation report
@@ -89,17 +80,18 @@ Knee-OA-Diagnostic-Pipeline-Hybrid-ViT-Ensemble/
 │   └── README.md                                     # Checkpoint storage instructions
 │
 ├── .gitignore
+├── requirements.txt
 └── README.md
-`
+```
 
 ---
 
 ## Manuscript Compilation
 
 To compile the paper into PDF format:
-`ash
+```bash
 cd manuscript/
 pdflatex knee_osteoarthritis_paper.tex
 pdflatex knee_osteoarthritis_paper.tex
-`
+```
 *(All 55 references are embedded inline inside knee_osteoarthritis_paper.tex, so running BibTeX is not required.)*
