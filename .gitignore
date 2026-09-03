@@ -28,3 +28,11 @@ archives/*.zip
 .venv/
 env/
 venv/
+
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.pdf
+*.pth
+*.pt

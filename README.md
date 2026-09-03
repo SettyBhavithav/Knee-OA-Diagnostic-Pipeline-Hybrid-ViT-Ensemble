@@ -1,115 +1,105 @@
-# Knee Osteoarthritis Diagnostic Pipeline (Modular & High-Performance Ensemble with XAI)
+# Hybrid Deep Learning Ensemble with Ordinal-Aware Loss for Knee Osteoarthritis Severity Grading
 
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org/)
-[![timm](https://img.shields.io/badge/timm-Vision_Models-blue.svg)](https://github.com/huggingface/pytorch-image-models)
-[![Captum](https://img.shields.io/badge/Captum-XAI-orange.svg)](https://captum.ai/)
-[![Clinical Validity](https://img.shields.io/badge/Clinical_Validity-Q1_Journal_Grade-brightgreen.svg)]()
-[![Data Leakage](https://img.shields.io/badge/Data_Leakage-0%25_(Patient--Level_Split)-success.svg)]()
+[![IEEE Paper](https://img.shields.io/badge/Paper-IEEE%20Format-blue.svg)](manuscript/knee_osteoarthritis_paper.tex)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
+[![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-red.svg)](https://pytorch.org/)
 
-> A modular, clinically valid deep learning diagnostic framework for automated 3-class severity grading of Knee Osteoarthritis (KOA) from radiograph (X-ray) images. Fuses **ConvNeXt-Base**, **Swin Transformer**, and **DINO ViT** into an integrated hybrid architecture optimized with **Custom Ordinal Loss**, **4-View Test-Time Augmentation (TTA)**, and **Multi-Branch Explainable AI (XAI)**.
-
----
-
-## 📁 Structured Project Directory Hierarchy
-
-```
-knee_oa_structured/
-├── README.md                                 # Main project documentation & user guide
-├── requirements.txt                          # Python dependencies list
-├── dataset/                                  # Formatted dataset partitions
-│   ├── train/                                # 2,889 unique patients (6,841 images)
-│   ├── val/                                  # 413 unique patients (1,466 images)
-│   ├── test/                                 # 828 unique patients (1,463 images)
-│   └── auto_test/                            # 1,526 unique patients (1,526 images)
-├── weights/                                  # Pretrained PyTorch model checkpoints (.pth)
-│   ├── cnn_model_no_leakage.pth              # ConvNeXt-Base model weights
-│   ├── vit_model_no_leakage.pth              # Swin Transformer model weights
-│   ├── dino_model_no_leakage.pth             # DINO ViT model weights
-│   ├── hybrid_model_no_leakage.pth           # Fused Hybrid model weights
-│   ├── cnn_model_head_no_leakage.pth
-│   ├── vit_head_no_leakage.pth
-│   ├── dino_head_no_leakage.pth
-│   └── hybrid_head_no_leakage.pth
-├── src/                                      # Modular Python source code & pipeline scripts
-│   ├── knee_osteoarthritis_classification.py # End-to-end training & evaluation pipeline script
-│   ├── verify_datasplit_leakage_free.py      # Patient-level split verification audit script
-│   ├── run_statistical_tests.py              # Statistical validation suite (Bootstrap CIs, McNemar, Ablation)
-│   └── create_leakage_free_notebook.py       # Programmatic notebook generator utility
-├── notebooks/                                # Interactive Jupyter notebooks
-│   ├── knee_osteoarthritis_classification.ipynb
-│   └── knee_osteoarthritis_leakage_free_pipeline.ipynb
-├── docs/                                     # Reports, mathematical audits & documentation
-│   ├── methodological_superiority_report.md  # Peer-review grade methodological comparison report
-│   ├── methodological_superiority_report.docx
-│   ├── methodological_superiority_report.txt
-│   ├── complete_project_report.docx
-│   ├── project_comparison_audit.docx
-│   ├── statistical_audit_results.txt         # Output from statistical audit suite
-│   └── datasplit_explanation.txt             # Mathematical & clinical split breakdown
-└── archives/                                 # Backups & original compressed zip archives
-    └── knee_osteoarthritis_classification 95%.zip
-```
+An end-to-end, clinically validated, leakage-free deep learning framework for automated Knee Osteoarthritis (KOA) severity grading from radiographic X-ray images. This repository integrates a **triple-backbone hybrid architecture (ConvNeXt-Base + Swin Transformer + DINO ViT)** with ordinal-aware optimization, GPU dual-pass test-time augmentation (TTA), and a comprehensive multi-branch explainable AI (XAI) suite.
 
 ---
 
-## 📌 Key Features & Highlights
+## Key Performance Benchmarks (GPU Dual-Pass TTA, N=4,008)
 
-1. **0% Patient-Level Data Leakage**: Guaranteed zero patient overlap between `train`, `val`, `test`, and `auto_test` splits by parsing unique Patient IDs (stripping `L`/`R` knee markers).
-2. **Clinically Valid Class Remapping**: KL Grade 0 & 1 $\rightarrow$ **Healthy**, Grade 2 & 3 $\rightarrow$ **Moderate**, Grade 4 $\rightarrow$ **Severe** (remedies the clinical error in naive papers mapping Grade 2 to Healthy).
-3. **Hybrid Feature Fusion**: Combines local spatial texture (ConvNeXt-Base), global context (Swin Transformer), and self-supervised structural priors (DINO ViT).
-4. **Custom Ordinal Loss**: $\mathcal{L}_{\text{ordinal}} = \mathcal{L}_{\text{CE}} + 0.5 \times \mathcal{L}_{\text{MAE}}$ penalizes severe diagnostic grade errors twice as heavily.
-5. **High Test Performance**: Achieves **90.08% Accuracy** and **0.831 Quadratic Weighted Kappa**.
-6. **Rigorous Statistical Suite**: Includes Bootstrap 95% Confidence Intervals, McNemar significance tests, Bootstrap Paired DeLong AUC tests, and Feature Ablation analysis.
-7. **Explainable AI (XAI)**: Multi-branch attributions including Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, and Integrated Gradients.
+Evaluated on an independent, combined evaluation cohort of **4,008 images** (N=9,786 total dataset across 4,130 unique patients) with **verified zero patient-level leakage**:
 
----
+| Model Variant | Accuracy (%) | Precision (%) | Recall (%) | Macro F1 (%) | QWK | Macro AUC |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| ConvNeXt-Base (Local Texture) | 87.52 | 88.07 | 90.27 | 89.05 | 0.800 | 0.966 |
+| Swin Transformer (Global Context) | 84.26 | 83.00 | 87.28 | 84.35 | 0.749 | 0.948 |
+| DINO ViT (Structural Priors) | 90.22 | 92.08 | 92.98 | 92.52 | 0.842 | 0.974 |
+| **Hybrid Fusion Model** | **90.92** | **92.39** | **93.17** | **92.70** | **0.853** | **0.980** |
+| **Soft-Voting Ensemble** | **90.54** | **92.02** | **92.80** | **92.28** | **0.847** | **0.980** |
 
-## 🚀 Quickstart Guide
-
-### 1. Environment Setup
-Install dependencies via `requirements.txt`:
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Verify Patient-Level Data Separation (Zero Leakage Audit)
-From the project root:
-```bash
-python src/verify_datasplit_leakage_free.py
-```
-*Expected Output:* `[VERDICT] PASS: Zero patient-level data leakage detected.`
-
-### 3. Run Statistical Validation Suite
-Execute Bootstrap CIs, McNemar's test, Paired DeLong AUC comparison, and Feature Ablation:
-```bash
-python src/run_statistical_tests.py
-```
-
-### 4. Run Full Diagnostic Pipeline Script
-Train backbones, run Test-Time Augmentation (TTA), ensemble predictions, and render XAI heatmaps:
-```bash
-python src/knee_osteoarthritis_classification.py
-```
-
-### 5. Interactive Notebook Evaluation
-Open **`notebooks/knee_osteoarthritis_classification.ipynb`** or **`notebooks/knee_osteoarthritis_leakage_free_pipeline.ipynb`** in VS Code or JupyterLab and select your active Python kernel.
+### Clinical Safeguards & Key Achievements
+- **100.00% Severe Class Sensitivity:** All 122 Severe test cases (N=4,008) correctly identified with **zero extreme grade reversals** (0 Severe misclassified as Healthy).
+- **Quadratic Weighted Kappa (QWK):** **0.853**, indicating **almost perfect** ordinal agreement according to the Landis-Koch scale.
+- **Verified Leakage-Free Splitting:** Strict patient-level partition with zero subject overlap across splits.
 
 ---
 
-## 📜 Citation & Academic Reference
+## Architecture Overview
 
-```bibtex
-@article{koa_diagnostic_pipeline_2026,
-  title={Clinically Valid, Leakage-Free Hybrid Deep Learning Pipeline for Knee Osteoarthritis Staging},
-  author={Setty, Bhavithav},
-  year={2026},
-  journal={High-Performance Medical Imaging Technical Report}
-}
-```
+`
+                          [ Input Radiograph (224x224) ]
+                                        │
+           ┌────────────────────────────┼────────────────────────────┐
+           ▼                            ▼                            ▼
+  [ ConvNeXt-Base ]             [ Swin Transformer ]         [ DINO ViT-Base ]
+ (Hierarchical Texture)        (Shifted-Window Context)    (Self-Supervised Structural)
+    1024-dim Features            1024-dim Features            768-dim Features
+           │                            │                            │
+           └────────────────────────────┼────────────────────────────┘
+                                        ▼
+                         [ Late Feature Concatenation ]
+                              (2816-dimensional)
+                                        ▼
+                  [ Multi-Layer Head: FC(1024) -> FC(512) ]
+                                        ▼
+                     [ Softmax Output: 3 Severity Tiers ]
+                    (Healthy: 0-1, Moderate: 2-3, Severe: 4)
+`
 
+---
 
-## 🔒 License & Copyright
+## Repository Directory Structure
 
-**Copyright © 2026 Setty Bhavithav. All Rights Reserved.**
+`
+Knee-OA-Diagnostic-Pipeline-Hybrid-ViT-Ensemble/
+├── manuscript/
+│   ├── knee_osteoarthritis_paper.tex   # IEEEtran LaTeX source code (55 inline references)
+│   ├── fig2.jpeg                       # Fig 2: Confusion Matrices
+│   ├── fig3.jpeg                       # Fig 3: ROC Curves (Dual-Pass TTA)
+│   ├── fig4.jpeg                       # Fig 4: Multi-Method Explainability Visualizations
+│   └── fig5.jpeg                       # Fig 5: LIME Superpixel Attributions
+│
+├── notebooks/
+│   └── knee_osteoarthritis_xai_and_evaluation.ipynb  # Primary GPU pipeline & XAI notebook
+│
+├── src/                                # Source Code & Execution Scripts
+│   ├── knee_osteoarthritis_xai_and_evaluation.py    # Main evaluation script
+│   ├── verify_datasplit_leakage_free.py              # Patient-level leakage audit tool
+│   ├── run_statistical_tests.py                      # McNemar, Bootstrap CI, DeLong tests
+│   ├── apply_tta_to_koa.py                           # TTA execution script
+│   └── cache_gpu_preds.py                            # GPU probability caching utility
+│
+├── figures/                            # High-Resolution Publication Figures
+│   ├── fig2.jpeg
+│   ├── fig3.jpeg
+│   ├── fig4.jpeg
+│   └── fig5.jpeg
+│
+├── reports/
+│   └── q1_journal_comprehensive_report.md            # Comprehensive audit & validation report
+│
+├── dataset/
+│   └── README.md                                     # Dataset acquisition & split instructions
+│
+├── weights/
+│   └── README.md                                     # Checkpoint storage instructions
+│
+├── .gitignore
+└── README.md
+`
 
-This project and all associated source code, media assets, and documentation are proprietary. Unauthorized copying, modification, distribution, or reproduction of any part of this repository, via any medium, is strictly prohibited without explicit written consent from the copyright owner **Setty Bhavithav**.
+---
+
+## Manuscript Compilation
+
+To compile the paper into PDF format:
+`ash
+cd manuscript/
+pdflatex knee_osteoarthritis_paper.tex
+pdflatex knee_osteoarthritis_paper.tex
+`
+*(All 55 references are embedded inline inside knee_osteoarthritis_paper.tex, so running BibTeX is not required.)*
