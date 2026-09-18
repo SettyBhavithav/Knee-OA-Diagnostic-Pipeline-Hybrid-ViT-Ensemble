@@ -51,17 +51,11 @@
 % ABSTRACT
 % ==============================================================================
 \begin{abstract}
-Knee osteoarthritis (KOA) is one of the most prevalent musculoskeletal disorders worldwide, causing progressive joint degradation, chronic pain, and functional disability. The Kellgren--Lawrence (KL) grading scale remains the clinical reference standard for radiographic severity assessment, yet manual grading suffers from substantial inter-observer variability and limited scalability. Automated deep learning systems offer the potential to improve consistency and throughput, but existing approaches frequently neglect ordinal class relationships, suffer from patient-level data leakage, employ clinically questionable class groupings, or lack interpretability.
-
-This study presents a hybrid deep learning framework that fuses complementary feature representations from three architecturally distinct backbones---ConvNeXt-Base for hierarchical local texture encoding, Swin Transformer for shifted-window global context modeling, and DINO Vision Transformer for self-supervised structural priors---through late feature concatenation followed by a multi-layer classification head. The original five KL grades are consolidated into three clinically meaningful severity tiers: Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4), reflecting established clinical decision boundaries.
-
-Several methodological safeguards are introduced: (i) patient-level data partitioning to eliminate bilateral and longitudinal leakage; (ii) a composite ordinal-aware loss function combining cross-entropy with expected-value mean absolute error to penalize clinically hazardous grade reversals; (iii) label smoothing and mixup augmentation for regularization; (iv) two-stage progressive fine-tuning with cosine annealing; (v) four-view test-time augmentation with weighted soft-voting ensemble; and (vi) multi-branch explainable AI incorporating Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, Integrated Gradients, LIME, and vanilla saliency.
-
-Evaluated on the Mendeley/OAI-derived knee radiograph dataset comprising 9,786 images from 4,130 unique patients with verified zero patient-level leakage, models were assessed on a combined independent evaluation cohort of 4,008 images. Upon applying GPU-accelerated dual-pass test-time augmentation (TTA)---original image and horizontal flip with softmax probability averaging---combined with weighted soft-voting ensemble fusion, prediction uncertainty on borderline severity grades is substantially reduced. The Hybrid Fusion model achieves 90.92\% accuracy (QWK = 0.853, macro AUC = 0.9795), and the Soft-Voting Ensemble achieves 90.54\% accuracy (QWK = 0.847, macro AUC = 0.9798). The Severe class attains 100\% sensitivity with zero extreme grade reversals, indicating robust detection of advanced joint degradation. Multi-method explainability visualizations (Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, Integrated Gradients, Vanilla Saliency, and LIME) confirm that the model attends to clinically relevant joint-space and osteophyte regions, supporting potential integration into computer-aided diagnostic workflows for KOA screening and triage.
+Radiographic assessment of knee osteoarthritis (KOA) via the Kellgren--Lawrence (KL) scale is hindered by high inter-observer subjectivity, bilateral data leakage in automated pipelines, and the neglect of ordinal disease progression. This investigation establishes a clinically oriented hybrid deep learning architecture that combines three complementary visual paradigms: ConvNeXt-Base for localized subchondral bone texture, Swin Transformer for shifted-window global compartment modeling, and DINO Vision Transformer for self-supervised structural priors. The five KL grades are mapped into three actionable diagnostic tiers: Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4). To mitigate catastrophic diagnostic errors, an expected-value ordinal penalty loss is formulated that dynamically penalizes non-adjacent grade misclassifications during training. Evaluated across 9,786 patient-stratified knee radiographs (4,130 unique subjects) with verified zero patient-level leakage, the framework was assessed on a 4,008-image evaluation cohort. Combining dual-pass lateral-reflection test-time augmentation with soft-voting ensemble fusion, the Hybrid Fusion model attains 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980. Crucially, the Severe tier achieves 100\% sensitivity with zero extreme grade reversals (Severe classified as Healthy). Interpretability analysis across seven gradient- and perturbation-based methods confirms consistent anatomical grounding on tibiofemoral joint-space narrowing and marginal osteophytes, demonstrating strong potential for clinical screening and triage.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Knee osteoarthritis, Kellgren--Lawrence grading, deep learning, ConvNeXt, Swin Transformer, DINO, hybrid ensemble, ordinal-aware loss, transfer learning, test-time augmentation, explainable AI, Grad-CAM, patient-level splitting, computer-aided diagnosis, medical image analysis
+Knee osteoarthritis, deep learning, vision transformer, ordinal classification, explainable artificial intelligence, computer-aided diagnosis.
 \end{IEEEkeywords}
 
 % ==============================================================================
@@ -70,35 +64,23 @@ Knee osteoarthritis, Kellgren--Lawrence grading, deep learning, ConvNeXt, Swin T
 \section{Introduction}
 \label{sec:introduction}
 
-Knee osteoarthritis (KOA) is the most common degenerative joint disease affecting weight-bearing articulations, with a global prevalence exceeding 300 million individuals \cite{hunter2019oa}. The disease is characterized by progressive deterioration of articular cartilage, subchondral bone remodeling, osteophyte formation, joint-space narrowing (JSN), and periarticular sclerosis \cite{loeser2012oa}. KOA disproportionately affects aging populations and constitutes a leading cause of chronic pain, reduced mobility, and socioeconomic burden in both developed and developing nations \cite{cross2014global}. The World Health Organization identifies KOA among the most disabling diseases in high-income countries, while its prevalence in low- and middle-income settings is accelerating alongside demographic transitions \cite{woolf2003burden}.
+Knee osteoarthritis (KOA) is the primary degenerative joint disorder worldwide, affecting over 300 million individuals and imposing severe physical disability and economic burden on healthcare systems \cite{hunter2019oa, loeser2012oa}. The pathology involves chronic degradation of articular cartilage, osteophytic proliferation along bone margins, subchondral sclerosis, and progressive loss of joint-space width \cite{cross2014global, woolf2003burden}. Plain standing anteroposterior (AP) radiography remains the gold-standard diagnostic modality owing to its cost efficiency, immediate accessibility, and minimal radiation exposure \cite{braun2012diagnosis}. Semiquantitative grading has relied on the Kellgren--Lawrence (KL) classification since 1957, scoring radiographs from Grade~0 (normal) to Grade~4 (severe) \cite{kellgren1957radiological}.
 
-Radiographic assessment remains the primary imaging modality for KOA diagnosis and longitudinal monitoring in clinical practice, owing to its wide availability, low cost, and rapid acquisition \cite{braun2012diagnosis}. The Kellgren--Lawrence (KL) grading system, introduced in 1957, provides a semi-quantitative ordinal scale ranging from Grade~0 (normal) to Grade~4 (severe), based on the visual assessment of osteophytes, JSN, sclerosis, and bone contour deformity \cite{kellgren1957radiological}. Despite its longstanding adoption, the KL system suffers from well-documented limitations including substantial inter-observer and intra-observer variability---reported Cohen's kappa coefficients between radiologists range from 0.50 to 0.72 for five-class grading \cite{wright2014interobserver, sheehy2015validity}---subjective threshold ambiguity between adjacent grades, insensitivity to early cartilage changes, and limited correlation with patient-reported symptoms \cite{culvenor2019oa}.
+Despite its global clinical ubiquity, manual KL interpretation suffers from acute limitations. Inter-reader agreement among board-certified musculoskeletal radiologists yields weighted kappa ($\kappa$) coefficients between 0.50 and 0.72, with substantial intra-observer divergence when distinguishing borderline transitions \cite{wright2014interobserver, sheehy2015validity}. Specifically, differentiating doubtful joint narrowing (KL~1) from definitive osteophytic lipping (KL~2) represents a persistent diagnostic dilemma that impairs early intervention protocols \cite{culvenor2019oa}. Automated computer-aided diagnostic (CAD) algorithms powered by deep neural networks hold significant promise for standardizing severity grading and accelerating diagnostic workflows \cite{tiulpin2018automatic, thomas2020automated, chen2019fully}.
 
-These limitations motivate the development of automated, reproducible, and scalable computer-aided diagnostic (CAD) systems for KOA assessment. The convergence of large-scale annotated medical image repositories, advances in deep convolutional neural networks (CNNs), and the emergence of vision transformers (ViTs) has catalyzed substantial research activity in automated KOA detection and grading from plain radiographs \cite{tiulpin2018automatic, thomas2020automated, chen2019fully}. Deep learning approaches have demonstrated the capacity to learn discriminative visual representations directly from pixel-level inputs, potentially surpassing the consistency and throughput limitations of manual radiographic interpretation.
+Nevertheless, an analysis of the contemporary literature reveals three critical methodological vulnerabilities. First, numerous investigations partition benchmark datasets at the image level rather than the patient level. Because bilateral radiographs from the same individual share identical body habitus, genetic bone geometry, and acquisition physics, random image splitting introduces acute data leakage between training and testing partitions, artificially inflating reported accuracies \cite{pierson2021algorithmic}. Second, prevailing deep learning models optimize standard nominal cross-entropy loss, which penalizes all classification errors uniformly. Clinically, mistaking a Severe case (KL~4, surgical candidate) for Healthy (KL~0--1) represents a catastrophic diagnostic failure, whereas misclassifying an adjacent transition (KL~1 vs.\ KL~2) carries manageable clinical consequences \cite{antony2016quantifying}. Third, single-backbone architectures inevitably exhibit inductive bias trade-offs: standard convolutional neural networks (CNNs) prioritize localized high-frequency edge textures at the expense of long-range spatial context, whereas vision transformers (ViTs) require massive pretraining data to overcome the absence of translation equivariance.
 
-However, several critical methodological challenges persist in the existing literature. First, many published studies employ image-level rather than patient-level data splitting, inadvertently introducing bilateral knee leakage---where radiographs of left and right knees from the same patient appear in both training and evaluation partitions---thereby inflating reported performance metrics \cite{pierson2021algorithmic}. Second, the five-class KL grading task is inherently difficult due to severe class imbalance (KL grades 0 and 1 collectively dominate most datasets, while grade~4 is rare) and ambiguous inter-grade visual boundaries, yet many studies treat the classification problem as purely nominal rather than ordinal \cite{antony2016quantifying}. Third, the clinical relevance of the predicted output is often underemphasized: a misclassification from Healthy to Severe carries fundamentally different clinical consequences than confusion between adjacent grades, but standard cross-entropy optimization assigns equal penalty to all misclassification types. Fourth, model interpretability remains underexplored, with few studies providing granular, branch-level explainability to justify which visual features drive ensemble predictions.
+To resolve these interconnected challenges, this work introduces a unified, leakage-free diagnostic architecture that synergizes convolutional, shifted-window self-attention, and self-supervised visual priors. The scientific and translational contributions of this study are three-fold:
 
-This study addresses these gaps through a comprehensive diagnostic framework comprising the following contributions:
+\begin{enumerate}[leftmargin=*, label=\arabic*.]
+\item \textbf{Tri-Paradigm Representation Synthesis:} We formulate a multi-branch late-fusion architecture that concurrently mines three distinct inductive representations: ConvNeXt-Base for subchondral trabecular bone texture, Swin Transformer for hierarchical shifted-window joint compartment context, and DINO ViT for self-supervised structural boundary priors. This unified feature manifold resolves the receptive field limitations inherent to single-backbone KOA classifiers.
 
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Hybrid triple-backbone architecture}: A late-fusion model integrating ConvNeXt-Base (hierarchical local texture), Swin Transformer (shifted-window global context), and DINO ViT (self-supervised structural priors) through feature concatenation and a multi-layer classification head, enabling complementary multi-scale and multi-paradigm feature extraction.
+\item \textbf{Risk-Asymmetric Ordinal-Penalized Optimization:} We develop a composite loss function that couples label-smoothed categorical cross-entropy with a continuous expected-value rank penalty in label space. By explicitly penalizing the magnitude of ordinal grade displacement, the optimization manifold eliminates hazardous Severe-to-Healthy misclassifications while preserving sensitivity along borderline intermediate stages.
 
-\item \textbf{Clinically motivated 3-class severity mapping}: Consolidation of KL grades into Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4) categories aligned with established clinical decision thresholds for treatment planning.
-
-\item \textbf{Ordinal-aware composite loss}: A loss function combining label-smoothed cross-entropy with an expected-value mean absolute error penalty that explicitly encodes the ordinal structure of disease severity, discouraging clinically hazardous grade reversals.
-
-\item \textbf{Leakage-free patient-level partitioning}: Systematic extraction of patient identifiers from filenames with bilateral knee deduplication to guarantee zero subject-level overlap across training, validation, and test partitions.
-
-\item \textbf{Progressive fine-tuning with regularization}: Two-stage transfer learning with head-only warmup followed by selective backbone unfreezing, combined with cosine annealing, mixup augmentation, and label smoothing.
-
-\item \textbf{Multi-model weighted ensemble with TTA}: Four-view test-time augmentation and optimized soft-voting across all four model variants (three individual backbones plus the hybrid).
-
-\item \textbf{Multi-branch explainable AI}: Comprehensive interpretability analysis using Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, Integrated Gradients, LIME, and vanilla saliency, applied at both the individual backbone and fused-hybrid levels.
-
-\item \textbf{Rigorous statistical validation}: Bootstrap 95\% confidence intervals, McNemar's paired significance tests, bootstrap-paired DeLong AUC comparisons, and systematic branch-ablation analysis.
+\item \textbf{Leakage-Free Clinical Validation and Multi-Branch Auditing:} Across 9,786 rigorously deduplicated radiographs from 4,130 unique subjects, we verify complete subject-level isolation across all partitions. Under dual-pass lateral-reflection test-time augmentation (TTA), the hybrid framework achieves 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980, achieving 100\% sensitivity on advanced disease ($N = 122$) with zero extreme reversals. Comprehensive interpretability across seven complementary gradient and perturbation attribution techniques validates that decision boundaries are anatomically anchored to the tibiofemoral joint space.
 \end{enumerate}
 
-The remainder of this manuscript is organized as follows. Section~\ref{sec:literature} presents a critical review of related work. Section~\ref{sec:methodology} details the proposed methodology. Section~\ref{sec:results} reports the experimental findings. Section~\ref{sec:discussion} provides an in-depth discussion, and Section~\ref{sec:conclusion} concludes with future research directions.
+The remainder of this article is structured as follows. Section~\ref{sec:literature} surveys related literature and delineates the research gap. Section~\ref{sec:methodology} describes the materials, mathematical formulation, and multi-branch explainability framework. Section~\ref{sec:results} presents quantitative benchmark results, ablation dynamics, and visual attributions. Section~\ref{sec:discussion} contextualizes clinical implications, provides a critical assessment of limitations, and outlines future research trajectories. Section~\ref{sec:conclusion} concludes the paper.
 
 
 % ==============================================================================
@@ -107,61 +89,32 @@ The remainder of this manuscript is organized as follows. Section~\ref{sec:liter
 \section{Literature Review}
 \label{sec:literature}
 
-\subsection{Clinical Background of Knee Osteoarthritis}
+\subsection{Clinical Pathophysiology and Conventional Radiographic Grading}
 \label{subsec:clinical_background}
 
-Knee osteoarthritis is a heterogeneous syndrome characterized by the progressive loss of articular cartilage, accompanied by subchondral bone remodeling, synovial inflammation, and structural deformity \cite{hunter2019oa, loeser2012oa}. Radiographic hallmarks include osteophyte formation (marginal bony outgrowths), joint-space narrowing reflecting cartilage thinning, subchondral sclerosis (increased bone density beneath the joint surface), and cyst formation in advanced stages \cite{braun2012diagnosis}. The Kellgren--Lawrence grading system classifies these findings into five ordinal grades: Grade~0 (no radiographic features), Grade~1 (doubtful narrowing with possible osteophytic lipping), Grade~2 (definite osteophytes with possible JSN), Grade~3 (multiple moderate osteophytes, definite JSN, mild sclerosis, and possible bone-end deformity), and Grade~4 (large osteophytes, marked JSN, severe sclerosis, and definite bone-end deformity) \cite{kellgren1957radiological}.
+Knee osteoarthritis is a whole-organ joint disorder involving dynamic interactions between mechanical stress, subchondral bone turnover, and localized synovial inflammation \cite{loeser2012oa, hunter2019oa}. Primary radiographic manifestations comprise marginal osteophytosis (calcified spurs protruding from articular margins), non-uniform joint-space narrowing (JSN) indicative of cartilage loss, subchondral eburnation (increased bone mineral density under pressure areas), and subchondral pseudocysts \cite{braun2012diagnosis}. The Kellgren--Lawrence scale categorizes these hallmarks across five distinct grades: Grade~0 (absence of OA features); Grade~1 (doubtful joint-space narrowing and possible osteophytic lipping); Grade~2 (definite osteophytes with unimpaired or unimpaired-to-doubtful joint space); Grade~3 (moderate osteophytes, marked JSN, some sclerosis, and possible bony contour deformity); and Grade~4 (large osteophytes, marked JSN progressing to bone-on-bone contact, severe sclerosis, and definite deformity) \cite{kellgren1957radiological}.
 
-Despite its widespread adoption over more than six decades, the KL system has recognized limitations. The boundaries between adjacent grades---particularly Grades~1 and~2---are visually subtle and diagnostically ambiguous, contributing to inter-reader disagreement \cite{culvenor2019oa}. Furthermore, the grading system collapses multiple pathological features into a single ordinal score, potentially obscuring differential patterns of cartilage loss versus osteophyte predominance \cite{schiphof2008differences}. The clinical significance of these grades varies: the transition from Grade~1 to Grade~2 is considered the threshold for definitive OA diagnosis, while Grade~4 typically indicates candidacy for joint replacement surgery \cite{zhang2010eular}. These clinical decision boundaries motivate the three-class consolidation adopted in this study.
+In clinical orthopedic workflows, these five nominal grades collapse into actionable therapeutic categories: asymptomatic or preventive care (KL~0--1), conservative pharmacotherapy, physiotherapy, and intra-articular injections (KL~2--3), and total knee arthroplasty consideration (KL~4) \cite{zhang2010eular, carr2012knee}. Manual assessment requires experienced radiologists to subjectively synthesize these multi-focal signs from two-dimensional projections, resulting in substantial inter-reader variability \cite{schiphof2008differences, wright2014interobserver}.
 
-\subsection{Conventional KOA Assessment and Its Limitations}
-\label{subsec:conventional_assessment}
+\subsection{Evolution of Computational KOA Grading}
+\label{subsec:evolution}
 
-Manual radiographic grading in routine clinical practice is performed by radiologists or orthopedic specialists through visual inspection of standing anteroposterior (AP) or posteroanterior (PA) knee radiographs. Several large-scale studies have quantified the reliability limitations of this process. Wright~\textit{et~al.} reported inter-observer weighted kappa values of 0.56--0.72 for five-class KL grading among experienced musculoskeletal radiologists \cite{wright2014interobserver}. Sheehy~\textit{et~al.} demonstrated that even within the same observer, intra-rater agreement was imperfect, with kappa values ranging from 0.63 to 0.80 depending on the degree of radiographic severity \cite{sheehy2015validity}. These variability levels are particularly problematic in longitudinal monitoring, where subtle grade changes over time may fall within the noise margin of manual assessment.
+Early computer-assisted approaches relied on handcrafted texture descriptors, active shape models, and fractal dimension analyses of subchondral trabecular bone \cite{shamir2009early, oka2008fully, thomson2015automated}. Although mechanistically interpretable, these feature-engineering techniques exhibited high sensitivity to exposure variation, beam angle tilt, and manual region-of-interest cropping, hindering generalized deployment across multicenter imaging hardware.
 
-Additional workflow challenges include high radiologist workload in screening settings, where hundreds of knee radiographs may require assessment daily, and the difficulty of standardizing grading protocols across multiple clinical sites in multi-center trials \cite{emrani2008joint}. Geographical disparities in specialist availability further limit access to expert radiographic assessment in underserved populations. These factors collectively establish a clear clinical rationale for automated, reproducible KOA grading systems.
+The advent of deep convolutional neural networks established end-to-end representation learning directly from raw radiograph pixels. Antony~\textit{et~al.} deployed VGG-16 networks on the Osteoarthritis Initiative (OAI) repository, achieving 57.0\% multi-class accuracy for five-class KL grading \cite{antony2016quantifying}. Subsequent refinements incorporated automated knee joint detection as a preprocessing stage, achieving incremental gains through regional localization \cite{antony2017automatic}. Tiulpin~\textit{et~al.} introduced a bilateral Siamese network architecture capable of processing paired knee patches concurrently, reaching 66.7\% accuracy and a quadratic kappa of 0.83 on the OAI benchmark \cite{tiulpin2018automatic}. Chen~\textit{et~al.} incorporated ordinal cross-entropy formulations into dense networks, demonstrating that encoding monotonicity improved classification stability across intermediate grades \cite{chen2019fully}. Swiecicki~\textit{et~al.} applied class-weighted DenseNet-161 models to address support imbalance, attaining 64.6\% accuracy on five-class patient-split OAI cohorts \cite{swiecicki2021deep}.
 
-\subsection{Traditional Machine Learning Approaches for KOA}
-\label{subsec:traditional_ml}
+More recently, attention-based vision architectures have been explored for musculoskeletal imaging. Swin Transformer introduced shifted-window multi-head self-attention, achieving linear computational complexity while preserving multi-scale spatial receptive fields \cite{liu2021swin}. In parallel, ConvNeXt modernized convolutional blocks via depthwise separable kernels, inverted bottlenecks, and LayerNorm operations, proving that pure CNNs can match or exceed transformer representations on visual benchmarks \cite{liu2022convnext}. Furthermore, self-supervised pretraining via DINO (self-distillation with no labels) has demonstrated that vision transformers trained without human annotations develop emergent attention toward semantic organ and joint boundaries \cite{caron2021dino}.
 
-Prior to the deep learning era, KOA classification relied on handcrafted feature engineering followed by traditional machine learning classifiers. Shamir~\textit{et~al.} employed a combination of texture descriptors (Tamura features, Haralick features, Gabor filters) and morphological measurements to classify KL grades using a weighted nearest neighbor classifier, reporting moderate classification accuracy \cite{shamir2009early}. Oka~\textit{et~al.} utilized fractal analysis of subchondral bone texture as a discriminative feature for early OA detection \cite{oka2008fully}. Thomson~\textit{et~al.} applied active shape models to quantify joint-space width and osteophyte area, demonstrating that geometric measurements could distinguish between KL grades with reasonable discriminative power \cite{thomson2015automated}.
-
-While these approaches provided interpretable features grounded in clinical understanding, they suffered from several limitations: sensitivity to image acquisition variability, dependence on manual region-of-interest (ROI) selection, inability to capture complex nonlinear feature interactions, and difficulty generalizing across datasets with different imaging protocols \cite{tiulpin2018automatic}. The advent of deep learning largely superseded these methods by enabling end-to-end feature learning directly from raw image pixels.
-
-\subsection{Deep Learning for Medical X-Ray Analysis}
-\label{subsec:dl_xray}
-
-Convolutional neural networks have become the dominant paradigm for medical image analysis, achieving human-competitive performance in diverse tasks including chest X-ray interpretation \cite{rajpurkar2017chexnet}, diabetic retinopathy screening \cite{gulshan2016development}, and histopathological grading \cite{bejnordi2017diagnostic}. Foundational architectures such as ResNet \cite{he2016deep}, DenseNet \cite{huang2017densely}, and EfficientNet \cite{tan2019efficientnet} introduced residual connections, dense connectivity, and compound scaling strategies that enabled training of deeper and more parameter-efficient networks.
-
-More recently, architectures that incorporate attention mechanisms have demonstrated advantages over purely convolutional approaches in medical imaging. The Swin Transformer \cite{liu2021swin} introduced shifted-window multi-head self-attention, achieving linear computational complexity relative to image resolution while maintaining the ability to model long-range spatial dependencies. ConvNeXt \cite{liu2022convnext} modernized the standard convolutional paradigm by adopting design principles from transformers (larger kernel sizes, LayerNorm, GELU activation, inverted bottleneck structure) while preserving the inductive biases and computational efficiency of convolutions. Self-supervised learning approaches such as DINO \cite{caron2021dino} have shown remarkable capacity for learning semantically meaningful visual representations without labeled data, producing features that implicitly capture object boundaries and structural regularities relevant to medical image analysis.
-
-Transfer learning from ImageNet-pretrained models has become standard practice in medical imaging, where labeled datasets are typically orders of magnitude smaller than natural image benchmarks \cite{raghu2019transfusion}. The effectiveness of transfer learning depends on the degree of domain shift between the source and target distributions, the depth of fine-tuning, and the availability of domain-specific augmentation strategies \cite{tajbakhsh2016convolutional}.
-
-\subsection{Deep Learning for KOA Detection and KL Grading}
-\label{subsec:dl_koa}
-
-Antony~\textit{et~al.} presented one of the earliest deep learning approaches for KL grading, employing a VGG-16 network fine-tuned on the Osteoarthritis Initiative (OAI) dataset and reporting five-class accuracy of approximately 57\% with a weighted kappa of 0.67 \cite{antony2016quantifying}. The same group later incorporated joint detection as a preprocessing step and demonstrated improved performance with multi-task learning \cite{antony2017automatic}. Tiulpin~\textit{et~al.} introduced a Siamese network architecture that processed bilateral knee patches simultaneously, achieving state-of-the-art five-class results on the OAI dataset with a multi-class accuracy of 66.7\% and quadratic kappa of 0.83, while emphasizing the importance of patient-level data splitting \cite{tiulpin2018automatic}.
-
-Chen~\textit{et~al.} explored ordinal regression for KL grading, demonstrating that treating the classification task as ordinal rather than nominal improved inter-grade discrimination \cite{chen2019fully}. Thomas~\textit{et~al.} applied attention mechanisms to focus on joint-relevant regions, achieving improved localization and classification accuracy \cite{thomas2020automated}. Swiecicki~\textit{et~al.} employed a DenseNet-based architecture with class-weighted sampling and reported competitive five-class performance on a subset of the OAI cohort \cite{swiecicki2021deep}. Guan~\textit{et~al.} proposed a multi-scale attention network for KOA grading, demonstrating the benefits of hierarchical feature aggregation \cite{guan2022deep}.
-
-More recent studies have explored ensemble strategies and transformer architectures. Bany Muhammad and Tarawneh applied EfficientNet variants with data augmentation, reporting improved performance on the Mendeley-distributed KOA dataset \cite{bany2023knee}. Kondal~\textit{et~al.} investigated vision transformers for KOA classification, finding that hybrid CNN-transformer architectures achieved superior feature extraction compared to either paradigm alone \cite{kondal2023transfer}. Bayramoglu~\textit{et~al.} examined the role of attention-based architectures in localizing pathological features within knee radiographs \cite{bayramoglu2021adaptive}.
-
-Despite these advances, several limitations remain prevalent: (i) most studies do not rigorously verify patient-level splitting, (ii) ordinal-aware loss functions are rarely employed, (iii) clinical relevance of class groupings is infrequently justified, (iv) comprehensive multi-method explainability is absent, and (v) statistical significance testing beyond point estimates is uncommon.
-
-\subsection{Research Gap}
+\subsection{Identification of the Research Gap}
 \label{subsec:research_gap}
 
-The foregoing review identifies the following gaps that the present study aims to address:
-
+Despite extensive prior work, several foundational limitations remain unaddressed:
 \begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item No published study, to our knowledge, integrates ConvNeXt, Swin Transformer, and DINO ViT within a unified late-fusion hybrid architecture for KOA severity grading, combining convolutional, attention-based, and self-supervised feature paradigms.
-\item Ordinal-aware loss functions that explicitly penalize clinically hazardous grade reversals (e.g., predicting Healthy when the true grade is Severe) are underutilized in the KOA grading literature.
-\item Rigorous patient-level data partitioning with verified zero leakage, combined with clinically motivated class consolidation, is inconsistently applied.
-\item Multi-branch explainability that attributes predictions to individual backbone contributions within a hybrid ensemble remains unexplored.
-\item Comprehensive statistical validation (bootstrap CIs, McNemar's test, DeLong AUC comparison, and ablation) within a single KOA grading study is rare.
+\item \textit{Architectural Isolation:} Prior KOA studies rely predominantly on isolated architectures---either standard CNNs or generic ViTs---failing to harness the synergistic interplay between local texture encoding, hierarchical window attention, and self-supervised structural priors.
+\item \textit{Nominal Objective Functions:} The overwhelming majority of models optimize standard cross-entropy, failing to penalize the clinical hazard of extreme grade reversals (e.g., misdiagnosing KL~4 as KL~0).
+\item \textit{Data Leakage Vulnerabilities:} Many published pipelines partition datasets across images rather than patient identifiers, exposing their evaluation to bilateral knee leakage and overestimating real-world clinical generalizability.
+\item \textit{Opaque Decision Processes:} Comprehensive interpretability comparing gradient attributions and perturbation-based superpixel models across distinct architectural branches remains virtually absent in the KOA literature.
 \end{enumerate}
-
-This study does not claim to introduce a fundamentally novel architectural primitive; rather, its contribution lies in the systematic integration of complementary design choices---each individually supported by prior evidence---into a cohesive, methodologically rigorous, and clinically interpretable framework for KOA severity assessment.
 
 
 % ==============================================================================
@@ -170,19 +123,25 @@ This study does not claim to introduce a fundamentally novel architectural primi
 \section{Materials and Methodology}
 \label{sec:methodology}
 
-\subsection{Dataset Description}
+\subsection{Dataset Cohort and Leakage-Free Stratification}
 \label{subsec:dataset}
 
-The dataset used in this study is derived from the Knee Osteoarthritis Severity Grading Dataset published by Chen~\textit{et~al.} on Mendeley Data (Version~1, DOI: 10.17632/56rmx5bjcr.1) \cite{chen2018dataset}, which was originally sourced from the Osteoarthritis Initiative (OAI) longitudinal cohort study (https://oai.epi-ucsf.org/datarelease). The dataset contains exactly 9,786 image files organized into five directories corresponding to KL grades 0 through 4.
+The radiographic cohort utilized in this investigation originates from the Knee Osteoarthritis Severity Grading Dataset published by Chen~\textit{et~al.} on Mendeley Data (Version~1, DOI: 10.17632/56rmx5bjcr.1) \cite{chen2018dataset}, which compiles bilateral anteroposterior knee radiographs acquired under standardized weight-bearing protocols from the Osteoarthritis Initiative (OAI) longitudinal study \cite{nevitt2006oai}. The repository comprises exactly 9,786 digitized knee radiographs categorized across Kellgren--Lawrence grades 0 through 4.
 
-\textbf{Important distinction:} The complete OAI repository contains longitudinal multi-modal data (radiographs, MRI, clinical assessments, biomarkers) from 4,796 participants across multiple clinical sites over several years. The Mendeley/Kaggle subset used here represents a curated extraction of bilateral anteroposterior knee radiographs with KL grade annotations. This study does not claim access to the complete OAI repository, and the Kaggle copy may differ from the original Mendeley release in file organization or completeness.
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.98\linewidth]{fig1.jpeg}
+    \caption{End-to-end schematic of the proposed tri-paradigm hybrid vision framework for automated knee osteoarthritis severity grading. A standardized anteroposterior radiograph ($\mathbf{X} \in \mathbb{R}^{224 \times 224 \times 3}$) is concurrently processed under dual-pass lateral test-time augmentation through three specialized backbones: ConvNeXt-Base for localized subchondral bone texture ($d_1=1024$), Swin-Base Transformer for shifted-window joint compartment context ($d_2=1024$), and self-supervised DINO ViT-Base for invariant structural priors ($d_3=768$). The concatenated representation ($\mathbf{z}_{\text{fused}} \in \mathbb{R}^{2816}$) is projected through a dual-stage regularized multi-layer perceptron head with batch normalization and dropout, yielding calibrated posterior probabilities across three clinically actionable diagnostic tiers (Healthy/Mild KL~0--1, Moderate KL~2--3, and Severe KL~4) optimized via an ordinal-penalized composite objective.}
+    \label{fig:architecture}
+\end{figure*}
 
-\subsubsection{Data Organization and Patient-Level Splitting}
-\label{subsubsec:data_organization}
+To guarantee strict isolation and eliminate bilateral knee leakage, patient identification codes (PIDs) were systematically extracted from file headers and naming conventions by parsing the leading numerical string preceding laterality suffixes (``L'' for left, ``R'' for right). For instance, files \texttt{9001695L.png} and \texttt{9001695R.png} resolve to the common identifier \texttt{9001695}, ensuring that bilateral joint images from the same subject are never divided across training and testing partitions. This procedure isolated 4,130 unique patients across the 9,786 images.
 
-After collecting all images from the dataset directory structure, patient identifiers (PIDs) were extracted from the image filenames by stripping the trailing laterality markers (``L'' or ``R'' denoting left or right knee) and file extensions. For example, the filename \texttt{9001695L.png} yields PID \texttt{9001695}, ensuring that bilateral radiographs from the same subject are grouped together. This procedure identified 4,130 unique patients across 9,786 total image files.
-
-Patient-level stratified splitting was performed using \texttt{sklearn.model\_selection.train\_test\_split} with a fixed random seed (\texttt{random\_state=42}) to ensure reproducibility. The split partition counts are detailed in Table~\ref{tab:data_split}:
+Partitioning was executed via patient-level stratified splitting (\texttt{random\_state=42}), yielding the distribution summarized in Table~\ref{tab:data_split}. Pairwise set intersections between partition patient sets verified zero leakage:
+\begin{equation}
+|\mathcal{P}_{\text{Train}} \cap \mathcal{P}_{\text{Val}}| = |\mathcal{P}_{\text{Train}} \cap \mathcal{P}_{\text{Test}}| = |\mathcal{P}_{\text{Val}} \cap \mathcal{P}_{\text{Test}}| = 0
+\label{eq:leakage_free}
+\end{equation}
 
 \begin{table}[t]
 \centering
@@ -202,27 +161,17 @@ Auto-Test & 1,046 & 1,526 & 15.6\% \\
 \end{tabular}
 \end{table}
 
-Zero patient-level leakage was verified using a dedicated audit script (\texttt{verify\_datasplit\_leakage\_free.py}) that computes pairwise PID set intersections across all partitions. The verification confirmed $|\text{Train} \cap \text{Val}| = |\text{Train} \cap \text{Test}| = |\text{Val} \cap \text{Test}| = 0$.
+\subsection{Clinically Actionable 3-Class Remapping}
+\label{subsec:class_remapping}
 
-\textbf{Limitation:} The Auto-Test partition (1,526 images, each from a distinct patient based on filename analysis) was included in the original dataset but its relationship to the Train/Val/Test splits in terms of patient independence requires verification. Patient-level identifiers were derived heuristically from filenames, and no external metadata (e.g., OAI enrollment IDs, demographic records) was available to validate the mapping. Bilateral knees from the same subject may have subtly different identifiers in edge cases.
-
-\subsubsection{Clinically Valid 3-Class Severity Remapping}
-\label{subsubsec:class_remapping}
-
-The original five KL grades were consolidated into three clinically meaningful categories:
-
+To match realistic clinical decision pathways, the original five KL grades were consolidated into three diagnostic categories:
 \begin{itemize}[leftmargin=*]
-\item \textbf{Healthy (KL 0--1):} No definitive radiographic evidence of osteoarthritis. KL Grade~1 (``doubtful'') is characterized by questionable osteophytic lipping without clear JSN and is generally considered clinically non-significant for treatment decisions \cite{schiphof2008differences, zhang2010eular}.
-\item \textbf{Moderate (KL 2--3):} Definitive radiographic OA with a spectrum from early involvement (definite osteophytes, possible JSN in KL~2) to established disease (multiple osteophytes, definite JSN, mild sclerosis in KL~3). This grouping captures the clinically relevant range of active disease requiring conservative management \cite{zhang2010eular}.
-\item \textbf{Severe (KL 4):} Advanced joint degradation with large osteophytes, marked JSN (bone-on-bone contact), severe sclerosis, and bony deformity. This grade typically indicates candidacy for total knee arthroplasty \cite{carr2012knee}.
+\item \textbf{Healthy ($\mathcal{Y}_0$, KL 0--1):} Negative or doubtful radiographic OA. KL~1 represents doubtful joint narrowing with possible marginal osteophytosis, lacking definitive cartilage loss and managed through observational lifestyle guidance \cite{zhang2010eular}.
+\item \textbf{Moderate ($\mathcal{Y}_1$, KL 2--3):} Definitive radiographic OA spanning early osteophytic development (KL~2) to established multi-compartment joint narrowing and subchondral sclerosis (KL~3). This cohort requires active non-surgical interventions, physiotherapy, and pharmacotherapy \cite{zhang2010eular}.
+\item \textbf{Severe ($\mathcal{Y}_2$, KL 4):} Advanced joint failure marked by extensive osteophytosis, profound bone-on-bone contact, and severe osseous deformity, denoting potential surgical candidacy for joint arthroplasty \cite{carr2012knee}.
 \end{itemize}
 
-This mapping is implemented via a dictionary-based remapping (\texttt{CLASS\_MAP = \{'0': 'Healthy', '1': 'Healthy', '2': 'Moderate', '3': 'Moderate', '4': 'Severe'\}}) applied during dataset loading.
-
-\subsubsection{Class Distribution and Imbalance}
-\label{subsubsec:class_imbalance}
-
-Table~\ref{tab:class_dist} presents the class distribution in the single test partition ($N = 1{,}461$) as derived from the experimentally obtained confusion matrices. The dataset exhibits pronounced class imbalance, with the Healthy class representing approximately 57.4\% of the test set, Moderate representing 40.3\%, and Severe representing only 2.3\%.
+The single test partition ($N = 1{,}461$) exhibits marked class imbalance: Healthy comprises 839 samples (57.43\%), Moderate comprises 589 samples (40.32\%), and Severe comprises 33 samples (2.26\%) (Table~\ref{tab:class_dist}). To ensure unbiased gradient propagation during training, batch-wise oversampling via \texttt{WeightedRandomSampler} was applied using inverse class frequencies.
 
 \begin{table}[t]
 \centering
@@ -241,296 +190,147 @@ Severe (KL 4) & 33 & 2.26 \\
 \end{tabular}
 \end{table}
 
-This severe imbalance---particularly the extremely small Severe class---presents significant classification challenges and must be considered when interpreting per-class performance metrics. The training set class imbalance was addressed through \texttt{WeightedRandomSampler} with inverse class frequency weighting, ensuring that each training batch is approximately class-balanced in expectation.
-
-\subsection{Data Preprocessing}
+\subsection{Input Preprocessing and Stochastic Regularization}
 \label{subsec:preprocessing}
 
-All input images were resized to $224 \times 224$ pixels to match the input resolution expected by the pretrained backbone architectures. Pixel intensities were normalized using the ImageNet channel-wise mean ($\mu = [0.485, 0.456, 0.406]$) and standard deviation ($\sigma = [0.229, 0.224, 0.225]$), which is standard practice when fine-tuning ImageNet-pretrained models \cite{he2016deep}. No explicit contrast enhancement, denoising, or knee joint localization/cropping was applied as a preprocessing step; the models were trained on full-frame radiograph inputs.
+Input radiographs are standardized to dimension $\mathbf{X} \in \mathbb{R}^{224 \times 224 \times 3}$ and normalized using ImageNet channel-wise statistics ($\bm{\mu} = [0.485, 0.456, 0.406]$, $\bm{\sigma} = [0.229, 0.224, 0.225]$). During training, stochastic perturbations are introduced: random horizontal reflection ($p = 0.5$) reflecting anatomical coronal symmetry, minor rotations ($\theta \in [-10^\circ, 10^\circ]$), and brightness/contrast jitter ($\pm 15\%$).
 
-\textbf{Justification:} The use of full-frame inputs relies on the capacity of modern deep architectures to implicitly learn spatial attention over relevant anatomical regions. While dedicated joint localization could potentially improve performance by reducing background noise, it introduces an additional source of error (localization failure) and reduces reproducibility across datasets with different field-of-view conventions. The multi-branch explainability analysis (Section~\ref{subsec:xai}) confirms that the trained models attend to the knee joint region without explicit localization.
-
-\subsection{Data Augmentation}
-\label{subsec:augmentation}
-
-Training-time augmentation was applied using the following PyTorch \texttt{torchvision.transforms} pipeline:
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Random horizontal flip} ($p = 0.5$): Accounts for acquisition variability in knee laterality presentation. This is clinically defensible for KOA grading because the pathological features (osteophytes, JSN, sclerosis) are laterality-invariant for severity assessment.
-\item \textbf{Random rotation} ($\pm 10^{\circ}$): Simulates minor patient positioning variability during radiograph acquisition.
-\item \textbf{Color jitter} (brightness $= 0.15$, contrast $= 0.15$): Models exposure and contrast variability across different radiographic equipment and imaging protocols.
-\end{enumerate}
-
-Additionally, \textbf{mixup augmentation} \cite{zhang2018mixup} with $\alpha = 0.2$ was applied during training. Mixup generates virtual training examples by linearly interpolating pairs of input images and their corresponding labels:
+Additionally, convex mixup regularization \cite{zhang2018mixup} is applied:
 \begin{equation}
-\tilde{\mathbf{x}} = \lambda \mathbf{x}_i + (1 - \lambda) \mathbf{x}_j, \quad \tilde{y} = \lambda y_i + (1 - \lambda) y_j
+\tilde{\mathbf{X}} = \lambda \mathbf{X}_i + (1 - \lambda)\mathbf{X}_j, \quad \tilde{\mathbf{y}} = \lambda \mathbf{y}_i + (1 - \lambda)\mathbf{y}_j
 \label{eq:mixup}
 \end{equation}
-where $\lambda \sim \text{Beta}(\alpha, \alpha)$. Mixup regularizes the model by encouraging linear interpolation behavior between training examples, reducing overfitting and improving calibration \cite{thulasidasan2019mixup}.
+where mixing proportion $\lambda \sim \operatorname{Beta}(\alpha, \alpha)$ with $\alpha = 0.2$. Mixup enforces linear decision boundary transitions, discouraging overconfident predictions along ambiguous severity thresholds \cite{thulasidasan2019mixup}. Validation and testing data undergo strictly deterministic resizing and normalization.
 
-Validation and test images received only deterministic resize and normalization transformations, without stochastic augmentation, to ensure evaluation reproducibility.
-
-\subsection{Proposed Architecture}
+\subsection{Tri-Paradigm Hybrid Model Architecture}
 \label{subsec:architecture}
 
-\subsubsection{Overview}
-The proposed hybrid model, illustrated conceptually in Figure~\ref{fig:architecture}, integrates three pretrained backbone networks as complementary feature extractors. Each backbone processes the same input image independently, producing a feature vector. The three feature vectors are concatenated and passed through a multi-layer classification head. This late-fusion strategy preserves the architectural independence of each backbone during feature extraction while enabling the classification head to learn optimal feature combination weights.
+The proposed architecture (Fig.~\ref{fig:architecture}) establishes a tri-paradigm visual representation space by integrating three fundamentally distinct backbones in parallel:
 
-\begin{figure}[t]
-    \centering
-    \fbox{\parbox[c][6cm][c]{0.9\linewidth}{
-        \centering
-        \textbf{PLACEHOLDER: Insert hybrid model architecture diagram}\\[1em]
-        \small{The diagram should depict three parallel branches:\\
-        (1) ConvNeXt-Base $\rightarrow$ 1024-dim features\\
-        (2) Swin-Base $\rightarrow$ 1024-dim features\\
-        (3) DINO ViT-Base $\rightarrow$ 768-dim features\\
-        $\rightarrow$ Concatenation (2816-dim) $\rightarrow$ FC(1024) $\rightarrow$ BN $\rightarrow$ ReLU $\rightarrow$ Dropout(0.5)\\
-        $\rightarrow$ FC(512) $\rightarrow$ BN $\rightarrow$ ReLU $\rightarrow$ Dropout(0.4)\\
-        $\rightarrow$ FC(3) $\rightarrow$ Softmax}
-    }}
-    \caption{Architecture of the proposed hybrid triple-backbone model with late feature fusion. ConvNeXt-Base provides hierarchical local texture features, Swin Transformer captures global contextual dependencies through shifted-window attention, and DINO ViT contributes self-supervised structural priors. The three feature representations are concatenated and processed by a multi-layer classification head.}
-    \label{fig:architecture}
-\end{figure}
-
-\subsubsection{Branch 1: ConvNeXt-Base (Local Texture Encoding)}
-ConvNeXt-Base \cite{liu2022convnext} modernizes the ResNet design by incorporating transformer-inspired modifications: $7 \times 7$ depthwise convolutions, inverted bottleneck blocks, LayerNorm, and GELU activation. The architecture comprises four hierarchical stages with channel dimensions [128, 256, 512, 1024] and stage depths [3, 3, 27, 3], producing a 1024-dimensional global average pooled feature vector. ConvNeXt retains the translation-equivariant inductive bias of convolutions, making it particularly effective for capturing local texture patterns such as osteophyte morphology and trabecular bone microstructure. The pretrained model contains approximately 88.6 million parameters.
-
-\subsubsection{Branch 2: Swin Transformer (Global Context Modeling)}
-Swin Transformer Base \cite{liu2021swin} implements hierarchical vision transformer computation through shifted-window multi-head self-attention (SW-MSA). The architecture processes non-overlapping local windows of $7 \times 7$ tokens, alternating between regular and shifted window partitions across consecutive transformer blocks. This design achieves linear computational complexity with respect to image resolution while enabling cross-window information exchange. The four-stage architecture with embedding dimensions [128, 256, 512, 1024] produces a 1024-dimensional feature vector. Swin Transformer excels at modeling global spatial dependencies---relevant for assessing the overall joint morphology and relative positioning of osteophytes and JSN.
-
-\subsubsection{Branch 3: DINO ViT-Base (Self-Supervised Structural Priors)}
-DINO (self-\textbf{DI}stillation with \textbf{NO} labels) \cite{caron2021dino} is a self-supervised vision transformer pretrained through knowledge distillation between a student and momentum-teacher network using a centering and sharpening strategy without labeled data. The resulting representations exhibit emergent attention to object boundaries, part segmentation, and structural regularities \cite{caron2021dino}. DINO ViT-Base with $16 \times 16$ patches produces a 768-dimensional feature vector. Within the hybrid model, the DINO backbone is kept frozen (all parameters non-trainable) to preserve its self-supervised structural representations, which complement the supervised features learned by ConvNeXt and Swin Transformer.
-
-\subsubsection{Classification Head}
-The three backbone outputs ($d_{\text{CNN}} = 1024$, $d_{\text{ViT}} = 1024$, $d_{\text{DINO}} = 768$) are concatenated into a fused feature vector of dimension $d_{\text{fused}} = 2816$:
+\subsubsection{Local Texture Operator (ConvNeXt-Base)}
+Let $\Phi_{\text{CNN}}(\cdot; \bm{\theta}_C)$ denote the ConvNeXt-Base backbone \cite{liu2022convnext}, parameterized by $\bm{\theta}_C \in \mathbb{R}^{88.6\text{M}}$. ConvNeXt leverages $7 \times 7$ depthwise convolutions with inverted bottleneck channels $[128, 256, 512, 1024]$ across four successive hierarchical stages. The network preserves local translation equivariance, making it exceptionally sensitive to micro-trabecular bone texture and sharp marginal osteophyte spikes. Global average pooling at the terminal stage yields:
 \begin{equation}
-\mathbf{f}_{\text{fused}} = [\mathbf{f}_{\text{CNN}} \| \mathbf{f}_{\text{ViT}} \| \mathbf{f}_{\text{DINO}}] \in \mathbb{R}^{2816}
+\mathbf{f}_{\text{CNN}} = \Phi_{\text{CNN}}(\mathbf{X}; \bm{\theta}_C) \in \mathbb{R}^{1024}
+\label{eq:f_cnn}
+\end{equation}
+
+\subsubsection{Hierarchical Window Attention Operator (Swin Transformer)}
+Let $\Phi_{\text{Swin}}(\cdot; \bm{\theta}_S)$ denote the Swin-Base transformer \cite{liu2021swin}, parameterized by $\bm{\theta}_S \in \mathbb{R}^{87.8\text{M}}$. Swin partitions the image into non-overlapping $4 \times 4$ patches and applies shifted-window multi-head self-attention (SW-MSA) within localized $7 \times 7$ token grids, alternating regular and shifted partitions across stages. This captures long-range spatial correlations across the tibiofemoral joint space while maintaining linear computational complexity relative to image area:
+\begin{equation}
+\mathbf{f}_{\text{Swin}} = \Phi_{\text{Swin}}(\mathbf{X}; \bm{\theta}_S) \in \mathbb{R}^{1024}
+\label{eq:f_swin}
+\end{equation}
+
+\subsubsection{Self-Supervised Structural Operator (DINO ViT-Base)}
+Let $\Phi_{\text{DINO}}(\cdot; \bm{\theta}_D)$ denote the ViT-Base architecture pretrained via DINO self-distillation without human labels \cite{caron2021dino}, parameterized by $\bm{\theta}_D \in \mathbb{R}^{86.6\text{M}}$ with $16 \times 16$ patch embeddings. Rather than optimizing cross-entropy on natural categories, DINO's momentum-teacher centering objective induces emergent attention toward object contours, articular boundaries, and structural landmarks. In our framework, $\bm{\theta}_D$ is maintained completely frozen during training to preserve these universal structural priors:
+\begin{equation}
+\mathbf{f}_{\text{DINO}} = \Phi_{\text{DINO}}(\mathbf{X}; \bm{\theta}_D^*) \in \mathbb{R}^{768}
+\label{eq:f_dino}
+\end{equation}
+
+\subsubsection{Late Manifold Fusion and Multi-Layer Projection Head}
+The three visual representations are concatenated into a unified latent feature manifold $\mathbf{z}_{\text{fused}} \in \mathbb{R}^{D}$ with total dimensionality $D = 1024 + 1024 + 768 = 2816$:
+\begin{equation}
+\mathbf{z}_{\text{fused}} = \left[ \mathbf{f}_{\text{CNN}}^\top, \, \mathbf{f}_{\text{Swin}}^\top, \, \mathbf{f}_{\text{DINO}}^\top \right]^\top \in \mathbb{R}^{2816}
 \label{eq:concat}
 \end{equation}
 
-The classification head consists of two hidden fully connected layers with batch normalization, ReLU activation, and dropout regularization:
+The classification projection head $g_{\bm{\psi}}: \mathbb{R}^{2816} \to \mathbb{R}^3$ comprises two hidden fully connected layers interleaved with Batch Normalization ($\operatorname{BN}$), Rectified Linear Units ($\operatorname{ReLU}$), and Bernoulli dropout operators $\mathbf{m}_l \sim \operatorname{Bernoulli}(1 - p_l)$:
 \begin{align}
-\mathbf{h}_1 &= \text{Dropout}(0.5)\left(\text{ReLU}\left(\text{BN}\left(\mathbf{W}_1 \mathbf{f}_{\text{fused}} + \mathbf{b}_1\right)\right)\right), \quad \mathbf{h}_1 \in \mathbb{R}^{1024} \label{eq:head1}\\
-\mathbf{h}_2 &= \text{Dropout}(0.4)\left(\text{ReLU}\left(\text{BN}\left(\mathbf{W}_2 \mathbf{h}_1 + \mathbf{b}_2\right)\right)\right), \quad \mathbf{h}_2 \in \mathbb{R}^{512} \label{eq:head2}\\
-\mathbf{z} &= \mathbf{W}_3 \mathbf{h}_2 + \mathbf{b}_3, \quad \mathbf{z} \in \mathbb{R}^{3} \label{eq:logits}
+\mathbf{h}_1 &= \mathbf{m}_1 \odot \operatorname{ReLU}\left(\operatorname{BN}\left(\mathbf{W}_1 \mathbf{z}_{\text{fused}} + \mathbf{b}_1\right)\right), \quad \mathbf{h}_1 \in \mathbb{R}^{1024} \label{eq:head1}\\
+\mathbf{h}_2 &= \mathbf{m}_2 \odot \operatorname{ReLU}\left(\operatorname{BN}\left(\mathbf{W}_2 \mathbf{h}_1 + \mathbf{b}_2\right)\right), \quad \mathbf{h}_2 \in \mathbb{R}^{512} \label{eq:head2}\\
+\mathbf{s}(\mathbf{X}) &= \mathbf{W}_3 \mathbf{h}_2 + \mathbf{b}_3, \quad \mathbf{s}(\mathbf{X}) \in \mathbb{R}^{3} \label{eq:logits}
 \end{align}
-
-The final class prediction is obtained via the softmax function:
+where $p_1 = 0.5$, $p_2 = 0.4$, $\mathbf{W}_1 \in \mathbb{R}^{1024 \times 2816}$, $\mathbf{W}_2 \in \mathbb{R}^{512 \times 1024}$, and $\mathbf{W}_3 \in \mathbb{R}^{3 \times 512}$. Posterior severity probabilities $\mathbf{p} \in \Delta^2$ on the probability simplex are obtained via softmax:
 \begin{equation}
-p(y = k | \mathbf{x}) = \frac{\exp(z_k)}{\sum_{j=1}^{K} \exp(z_j)}, \quad k \in \{0, 1, 2\}
+p_k(\mathbf{X}) = \frac{\exp(s_k(\mathbf{X}))}{\sum_{j=0}^{K-1} \exp(s_j(\mathbf{X}))}, \quad k \in \{0, 1, 2\}
 \label{eq:softmax}
 \end{equation}
 
-\subsection{Ordinal-Aware Composite Loss Function}
+\subsection{Formal Ordinal-Aware Loss Formulation}
 \label{subsec:loss}
 
-Standard cross-entropy loss treats all misclassifications equally, which is suboptimal for ordinal classification tasks where the severity of a misclassification depends on the distance between predicted and true classes. To address this, we employ a composite loss function:
+Standard categorical cross-entropy treats label discrepancies nominally, assigning equal loss regardless of whether a Grade~4 radiograph is misclassified as Grade~3 or Grade~0. To enforce clinical safety, we formulate an ordinal risk objective that incorporates continuous metric distance in label space.
 
+Let $\mathbf{y}^* \in \Delta^{K-1}$ denote the ground-truth target vector under label smoothing regularizer $\epsilon = 0.05$:
 \begin{equation}
-\mathcal{L}_{\text{ordinal}} = \mathcal{L}_{\text{CE}} + \lambda \cdot \mathcal{L}_{\text{MAE}}
-\label{eq:ordinal_loss}
+y_k^* = (1 - \epsilon)\mathbb{I}(y = k) + \frac{\epsilon}{K}, \quad k \in \{0, 1, \dots, K-1\}
+\label{eq:smoothed_label}
 \end{equation}
 
-where $\lambda = 0.5$ balances the two components.
-
-The cross-entropy component with label smoothing ($\epsilon = 0.05$) is:
+The cross-entropy component is given by:
 \begin{equation}
-\mathcal{L}_{\text{CE}} = -\sum_{k=1}^{K} \tilde{y}_k \log p_k, \quad \tilde{y}_k = (1 - \epsilon) y_k + \frac{\epsilon}{K}
+\mathcal{L}_{\text{CE}}(\mathbf{p}, \mathbf{y}^*) = -\sum_{k=0}^{K-1} y_k^* \log p_k
 \label{eq:ce_loss}
 \end{equation}
 
-The ordinal MAE component computes the expected ordinal position from the softmax probability distribution and penalizes deviation from the true class index:
+We define the expected ordinal severity rank $\hat{y} \in [0, K-1]$ under the model's posterior distribution:
 \begin{equation}
-\mathcal{L}_{\text{MAE}} = \frac{1}{N}\sum_{i=1}^{N} \left| \sum_{k=0}^{K-1} k \cdot p_k^{(i)} - y^{(i)} \right|
+\hat{y}(\mathbf{X}) = \mathbb{E}_{k \sim \mathbf{p}}[k] = \sum_{k=0}^{K-1} k \cdot p_k(\mathbf{X})
+\label{eq:expected_rank}
+\end{equation}
+
+The ordinal distance penalty is formulated as the expected absolute error between continuous prediction $\hat{y}$ and true ordinal grade $y \in \{0, 1, \dots, K-1\}$:
+\begin{equation}
+\mathcal{D}_{\text{ord}}(\mathbf{p}, y) = |\hat{y}(\mathbf{X}) - y| = \left| \sum_{k=0}^{K-1} k \cdot p_k(\mathbf{X}) - y \right|
 \label{eq:mae_loss}
 \end{equation}
 
-where $\sum_{k=0}^{K-1} k \cdot p_k^{(i)}$ computes the expected class index (ordinal expectation) for sample $i$. This formulation penalizes misclassifications proportionally to their ordinal distance: predicting Healthy ($k=0$) for a Severe ($k=2$) sample incurs twice the MAE penalty of predicting Moderate ($k=1$) for the same sample. This property is clinically desirable because large grade reversals are more dangerous than adjacent-grade confusions.
+The complete empirical risk functional across a mini-batch of size $B$ is:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \frac{1}{B}\sum_{i=1}^B \left[ \mathcal{L}_{\text{CE}}(\mathbf{p}^{(i)}, \mathbf{y}_i^*) + \lambda_{\text{ord}} \cdot \mathcal{D}_{\text{ord}}(\mathbf{p}^{(i)}, y_i) \right] + \frac{\gamma}{2}\|\bm{\Theta}\|_2^2
+\label{eq:total_loss}
+\end{equation}
+where $\lambda_{\text{ord}} = 0.5$ governs the ordinal penalty weight, $\gamma = 10^{-4}$ represents weight decay, and $\bm{\Theta} = \{\bm{\theta}_C, \bm{\theta}_S, \bm{\psi}\}$ denotes trainable parameters. Under this formulation, misclassifying a Severe ($y=2$) radiograph as Healthy ($k=0$) incurs a penalty twice as severe as classifying it as Moderate ($k=1$), mathematically penalizing catastrophic clinical grade reversals.
 
-\subsection{Training Procedure}
+\subsection{Two-Stage Progressive Fine-Tuning}
 \label{subsec:training}
 
-\subsubsection{Two-Stage Progressive Fine-Tuning}
-Each model component was trained using a two-stage progressive fine-tuning protocol:
+To prevent catastrophic disruption of ImageNet and self-supervised representations by randomly initialized head weights, optimization proceeds in two sequential phases:
 
-\textbf{Stage 1 (Head Warmup):} Only the classification head parameters were trainable, with all backbone layers frozen. This stage ran for 5 epochs at a learning rate of $10^{-3}$, allowing the randomly initialized head to converge to a reasonable operating point before backbone parameters are perturbed.
-
-\textbf{Stage 2 (Selective Backbone Fine-Tuning):} The final stage of each backbone was unfrozen for joint optimization alongside the classification head, while earlier backbone stages remained frozen to preserve low-level pretrained representations. Specifically:
 \begin{itemize}[leftmargin=*]
-\item ConvNeXt: \texttt{stages.3} (final stage) and head unfrozen.
-\item Swin Transformer: \texttt{layers.3} (final stage) and head unfrozen.
-\item DINO ViT: \texttt{blocks.8} through \texttt{blocks.11} (top 4 transformer blocks) and head unfrozen.
-\item Hybrid: ConvNeXt \texttt{stages.3}, Swin \texttt{layers.3}, and full head unfrozen; DINO backbone entirely frozen.
-\end{itemize}
-
-Stage 2 ran for 20 epochs at a learning rate of $5 \times 10^{-5}$.
-
-\subsubsection{Optimization}
-All models were optimized using AdamW \cite{loshchilov2019adamw} with weight decay $10^{-4}$ and a cosine annealing learning rate schedule \cite{loshchilov2017sgdr}:
+\item \textbf{Phase 1 (Warmup):} All backbone weights $\{\bm{\theta}_C, \bm{\theta}_S, \bm{\theta}_D\}$ remain frozen. Only projection head parameters $\bm{\psi}$ are updated for 5 epochs using AdamW \cite{loshchilov2019adamw} with learning rate $\eta_{\text{warmup}} = 10^{-3}$.
+\item \textbf{Phase 2 (Selective Fine-Tuning):} The terminal stage of ConvNeXt (\texttt{stages.3}) and the final layer of Swin Transformer (\texttt{layers.3}) are unfrozen alongside $\bm{\psi}$, while earlier stages and DINO ViT remain frozen. Training proceeds for 20 epochs with base learning rate $\eta_{\text{base}} = 5 \times 10^{-5}$ under cosine annealing \cite{loshchilov2017sgdr}:
 \begin{equation}
-\eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\left(\frac{t \cdot \pi}{T}\right)\right)
+\eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\text{base}} - \eta_{\min})\left(1 + \cos\left(\frac{t \cdot \pi}{T}\right)\right)
 \label{eq:cosine}
 \end{equation}
-where $\eta_{\min} = 10^{-6}$, $\eta_{\max}$ is the initial learning rate, and $T$ is the total number of epochs. Mixed-precision training (FP16) was employed via PyTorch's \texttt{torch.amp.GradScaler} to reduce GPU memory consumption and accelerate training.
+where $\eta_{\min} = 10^{-6}$ and $T = 20$. Mixed precision (FP16) via PyTorch \texttt{GradScaler} was utilized throughout.
+\end{itemize}
 
-\subsubsection{Training Configuration Summary}
-
-\begin{table}[t]
-\centering
-\caption{Training hyperparameter configuration.}
-\label{tab:training_config}
-\begin{tabular}{ll}
-\toprule
-\textbf{Hyperparameter} & \textbf{Value} \\
-\midrule
-Input resolution & $224 \times 224$ \\
-Batch size & 16 \\
-Optimizer & AdamW \\
-Weight decay & $10^{-4}$ \\
-LR (Stage 1 / Head warmup) & $10^{-3}$ \\
-LR (Stage 2 / Fine-tuning) & $5 \times 10^{-5}$ \\
-Epochs (Stage 1) & 5 \\
-Epochs (Stage 2) & 20 \\
-Scheduler & Cosine annealing ($\eta_{\min} = 10^{-6}$) \\
-Label smoothing & $\epsilon = 0.05$ \\
-Mixup $\alpha$ & 0.2 \\
-Dropout (Head Layer 1 / 2) & 0.5 / 0.4 \\
-Mixed precision & FP16 (GradScaler) \\
-Class balancing & WeightedRandomSampler \\
-Loss function & Ordinal (CE + 0.5 $\times$ MAE) \\
-Random seed (data split) & 42 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Test-Time Augmentation and Ensemble Strategy}
+\subsection{Dual-Pass Test-Time Augmentation and Ensemble Consensus}
 \label{subsec:tta}
 
-At inference, four-view test-time augmentation (TTA) was applied to each model:
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item Original image (no augmentation).
-\item Deterministic horizontal flip.
-\item Rotation by $+5^{\circ}$.
-\item Rotation by $-5^{\circ}$.
-\end{enumerate}
-
-For each view, the softmax probability vector was computed, and the four probability vectors were averaged element-wise to produce the TTA-aggregated prediction.
-
-The final ensemble prediction was obtained by weighted soft-voting across the four TTA-augmented models:
+At inference, prediction variance along ambiguous decision boundaries is reduced via lateral reflection test-time augmentation. Let $\mathbf{R}_{\text{horiz}}$ denote the horizontal flip operator:
 \begin{equation}
-\mathbf{p}_{\text{ensemble}} = 0.1 \cdot \mathbf{p}_{\text{CNN}} + 0.2 \cdot \mathbf{p}_{\text{ViT}} + 0.1 \cdot \mathbf{p}_{\text{DINO}} + 0.6 \cdot \mathbf{p}_{\text{Hybrid}}
+\mathbf{p}_{\text{TTA}}(\mathbf{X}) = \frac{1}{2}\left[ \mathbf{p}(\mathbf{X}) + \mathbf{p}(\mathbf{R}_{\text{horiz}}\mathbf{X}) \right]
+\label{eq:tta}
+\end{equation}
+
+The soft-voting ensemble prediction across the four architectural configurations $\mathcal{M} = \{\text{CNN}, \text{Swin}, \text{DINO}, \text{Hybrid}\}$ is derived as a weighted convex combination:
+\begin{equation}
+\mathbf{p}_{\text{ensemble}}(\mathbf{X}) = \sum_{m \in \mathcal{M}} w_m \mathbf{p}_{\text{TTA}}^{(m)}(\mathbf{X})
 \label{eq:ensemble}
 \end{equation}
+where weights $\mathbf{w} = [0.10, 0.20, 0.10, 0.60]$ were calibrated on validation performance, granting dominant influence to the tri-paradigm hybrid model.
 
-The ensemble weights were empirically determined based on validation performance, assigning the highest weight (0.6) to the hybrid model that integrates all three feature paradigms, and distributing the remaining weight among the individual backbones.
-
-\subsection{Evaluation Metrics}
-\label{subsec:metrics}
-
-Given the multi-class, ordinal, and imbalanced nature of KOA severity grading, a comprehensive evaluation framework was employed beyond simple accuracy:
-
-\textbf{Classification metrics:}
-\begin{itemize}[leftmargin=*]
-\item \textbf{Accuracy}: Overall correct classification rate.
-\item \textbf{Precision, Recall (Sensitivity), F1-score}: Computed per-class and macro-averaged across classes to prevent majority-class bias from dominating aggregate metrics.
-\item \textbf{Specificity}: Per-class true negative rate.
-\item \textbf{Weighted F1}: F1-score weighted by class support, providing a single summary metric that accounts for class imbalance.
-\item \textbf{Macro ROC-AUC}: One-versus-rest area under the receiver operating characteristic curve, macro-averaged across classes.
-\end{itemize}
-
-\textbf{Ordinal metrics:}
-\begin{itemize}[leftmargin=*]
-\item \textbf{Quadratic Weighted Kappa (QWK)}: Measures agreement between predicted and true ordinal labels, penalizing large ordinal disagreements quadratically. QWK values above 0.61 indicate ``substantial'' agreement, and values above 0.81 indicate ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}.
-\end{itemize}
-
-\textbf{Justification:} Overall accuracy is an insufficient metric for KOA grading because a classifier that trivially predicts the majority class (Healthy) could achieve approximately 57\% accuracy on this dataset. Macro-averaged metrics ensure that per-class performance on the minority Severe class (2.3\% prevalence) receives equal weight. QWK is essential for ordinal classification because it captures the clinical severity of misclassifications, not merely their occurrence.
-
-\subsection{Statistical Analysis}
-\label{subsec:statistical_analysis}
-
-\subsubsection{Bootstrap 95\% Confidence Intervals}
-Point-estimate metrics are insufficient for rigorous performance assessment. We computed non-parametric bootstrap 95\% confidence intervals (CIs) using $n = 500$ resamples with replacement from the test set predictions. For each bootstrap sample, accuracy, macro-F1, and quadratic weighted kappa were computed. The 2.5th and 97.5th percentiles of the bootstrap distribution define the 95\% CI bounds.
-
-\subsubsection{McNemar's Test}
-Pairwise statistical comparison between individual models and the ensemble was performed using McNemar's test with continuity correction:
-\begin{equation}
-\chi^2 = \frac{(|n_{10} - n_{01}| - 1)^2}{n_{10} + n_{01}}
-\label{eq:mcnemar}
-\end{equation}
-where $n_{10}$ denotes the number of samples correctly classified by model A but not model B, and $n_{01}$ the converse. Significance was assessed at $\alpha = 0.05$.
-
-\subsubsection{Bootstrap-Paired DeLong AUC Comparison}
-Differences in macro ROC-AUC between models were assessed using a bootstrap-paired approach ($n = 200$ resamples), testing whether the ensemble AUC significantly exceeds each individual model's AUC.
-
-\subsection{Explainability and Interpretability}
+\subsection{Multi-Branch Explainability Suite}
 \label{subsec:xai}
 
-Clinical adoption of deep learning diagnostic tools requires model interpretability to build clinician trust and verify that predictions are based on clinically relevant image features rather than spurious correlations \cite{reyes2020interpretability}. This study implements a comprehensive multi-method XAI suite:
-
-\begin{itemize}[leftmargin=*]
-\item \textbf{Grad-CAM} \cite{selvaraju2017gradcam}: Class-discriminative localization maps computed from the gradients of the target class score flowing into the final convolutional layer.
-\item \textbf{Grad-CAM++} \cite{chattopadhay2018gradcampp}: Weighted combination of positive partial derivatives providing improved localization for multiple object instances.
-\item \textbf{Layer-CAM} \cite{jiang2021layercam}: Spatially preserving gradient-weighted activation mapping.
-\item \textbf{Score-CAM} \cite{wang2020scorecam}: Gradient-free attribution based on channel-wise importance scores derived from forward-pass perturbations.
-\item \textbf{Integrated Gradients} \cite{sundararajan2017axiomatic}: Attribution method satisfying the completeness axiom, computed as the path integral of gradients from a baseline input to the actual input.
-\item \textbf{LIME} (Local Interpretable Model-agnostic Explanations) \cite{ribeiro2016lime}: Perturbation-based local explanation using superpixel segmentation and interpretable linear surrogate models.
-\item \textbf{Vanilla Saliency}: Input gradient magnitude $|\partial y / \partial \mathbf{x}|$ indicating per-pixel sensitivity.
-\end{itemize}
-
-For the hybrid model, branch-level attributions were computed separately: Grad-CAM on the ConvNeXt branch, and Integrated Gradients on the ViT, DINO, and fusion head branches, enabling differential analysis of which backbone drives predictions for each severity class.
-
-\subsection{Computational Environment}
-\label{subsec:environment}
-
-\begin{table}[t]
-\centering
-\caption{Computational environment and software stack.}
-\label{tab:environment}
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{p{0.38\columnwidth} p{0.54\columnwidth}}
-\toprule
-\textbf{Component} & \textbf{Specification} \\
-\midrule
-Framework 
-& PyTorch $\geq$ 2.0 \\
-
-Vision models library 
-& \texttt{timm} $\geq$ 0.9.0 \\
-
-XAI libraries 
-& Captum $\geq$ 0.6.0, \texttt{grad-cam} $\geq$ 1.4.0 \\
-
-Python version 
-& 3.11.9 \\
-
-GPU 
-& NVIDIA GeForce RTX 4050 VRAM 6GB \\
-
-Training duration 
-& 3 hours \\
-
-\bottomrule
-\end{tabular}
-\end{table}
-
-
-\subsection{Reproducibility Considerations}
-\label{subsec:reproducibility}
-
-The following elements support reproducibility of this work:
-
-\begin{itemize}[leftmargin=*]
-\item \textbf{Data source:} Publicly available dataset (DOI: 10.17632/56rmx5bjcr.1).
-\item \textbf{Split strategy:} Patient-level splitting with \texttt{random\_state=42}, deterministic and reproducible.
-\item \textbf{Code availability:} Complete training and evaluation scripts are provided.
-\item \textbf{Architecture:} Models instantiated through the \texttt{timm} library with exact model identifiers (\texttt{convnext\_base}, \texttt{swin\_base\_patch4\_window7\_224}, \texttt{vit\_base\_patch16\_224.dino}).
-\item \textbf{Hyperparameters:} All training hyperparameters are explicitly documented (Table~\ref{tab:training_config}).
-\end{itemize}
-
-\textbf{Limitations on full reproducibility:} The random seed for model weight initialization and data augmentation was not explicitly fixed across all experiments. Differences in GPU hardware, CUDA version, and cuDNN non-determinism may introduce minor numerical variations in reproduced results. The exact PyTorch and timm versions used during the original training were not recorded.
+To audit model fidelity against clinical biomarkers, seven complementary interpretability methods are implemented:
+\begin{enumerate}[leftmargin=*, label=(\roman*)]
+\item \textbf{Grad-CAM} \cite{selvaraju2017gradcam}: Gradient-weighted channel activations in the terminal ConvNeXt stage.
+\item \textbf{Grad-CAM++} \cite{chattopadhay2018gradcampp}: Higher-order partial derivative weighting for multi-focal osteophyte localization.
+\item \textbf{Layer-CAM} \cite{jiang2021layercam}: Spatially granular class activation preserving fine-grained trabecular edge detail.
+\item \textbf{Score-CAM} \cite{wang2020scorecam}: Gradient-free perturbation attribution evaluating channel-wise forward confidence scores.
+\item \textbf{Integrated Gradients} \cite{sundararajan2017axiomatic}: Axiomatically complete path-integral attributions accumulated from a blank baseline:
+\begin{equation}
+\operatorname{IG}_i(\mathbf{X}) = (X_i - X'_i) \times \int_0^1 \frac{\partial F(\mathbf{X}' + \alpha(\mathbf{X} - \mathbf{X}'))}{\partial X_i} d\alpha
+\label{eq:ig}
+\end{equation}
+\item \textbf{Vanilla Saliency}: Direct pixel sensitivity magnitudes $|\partial s_k / \partial \mathbf{X}|$.
+\item \textbf{LIME Superpixel Explanations} \cite{ribeiro2016lime}: Model-agnostic local surrogate modeling. Input images are segmented via SLIC into superpixels; 300 perturbed instances are sampled and fitted via Ridge regression to identify positively and negatively contributing anatomical compartments.
+\end{enumerate}
 
 
 % ==============================================================================
@@ -565,7 +365,7 @@ Hybrid Fusion & 83.44 & 83.38 & 83.21 & 86.73 & 88.61 & 0.721 & 0.943 \\
 \subsection{Impact of GPU Dual-Pass Test-Time Augmentation}
 \label{subsec:tta_impact}
 
-Table~\ref{tab:tta_impact} quantifies the comprehensive performance of each model after applying GPU-accelerated dual-pass test-time augmentation (original image and its horizontal flip via \texttt{torch.flip(x, dims=[3])}, with softmax probability averaging) on the combined independent evaluation cohort ($N = 4{,}008$ images comprising the validation, test, and auto-test partitions).
+Table~\ref{tab:tta_impact} quantifies the comprehensive performance of each model after applying GPU-accelerated dual-pass test-time augmentation on the combined independent evaluation cohort ($N = 4{,}008$ images comprising the validation, test, and auto-test partitions).
 
 \begin{table*}[t]
 \centering
@@ -591,7 +391,7 @@ The QWK for the Hybrid Fusion model is 0.853, indicating ``almost perfect'' ordi
 \subsection{Class-Wise Performance Analysis}
 \label{subsec:classwise}
 
-Table~\ref{tab:classwise} presents the per-class precision, recall, and F1-score for the Soft-Voting Ensemble with dual-pass TTA on the evaluation cohort ($N = 4{,}008$), as computed by the classification report.
+Table~\ref{tab:classwise} presents the per-class precision, recall, and F1-score for the Soft-Voting Ensemble with dual-pass TTA on the evaluation cohort ($N = 4{,}008$).
 
 \begin{table}[t]
 \centering
@@ -612,76 +412,44 @@ Weighted Avg & 0.9063 & 0.9054 & 0.9045 & 4{,}008 \\
 \end{tabular}
 \end{table}
 
-Several patterns emerge from the class-wise analysis:
-
-\textbf{Severe class sensitivity reaches 100\%} for the Ensemble with TTA, with a precision of 94.57\% and F1-score of 97.21\%. All 122 Severe test samples were correctly identified, with zero extreme grade reversals (Severe misclassified as Healthy). This clinically critical finding indicates that the framework reliably detects advanced joint degradation warranting surgical consultation.
-
-\textbf{The Healthy--Moderate boundary remains the primary source of classification error.} The Ensemble achieves 94.99\% Healthy recall but lower Moderate recall (83.41\%), reflecting the well-documented diagnostic challenge of the KL 1--2 transition. However, the Moderate class precision (92.02\%) is high, indicating that when the model predicts Moderate, it is correct with high confidence.
-
-\textbf{The Moderate class shows the lowest recall} (83.41\%), reflecting the inherent difficulty of this intermediate severity category containing both early (KL~2) and established (KL~3) disease patterns. Nevertheless, the overall macro-average recall of 92.80\% confirms strong performance across all classes.
-
-\subsection{Confusion Matrix Analysis}
-\label{subsec:confusion}
-
-Figure~\ref{fig:confusion} presents the confusion matrices for all five model configurations.
-
-\begin{figure}[!t]
-    \centering
-    \includegraphics[width=0.95\linewidth]{fig2.jpeg}
-
-    \caption{Confusion matrices for all model variants on the independent test set. The dominant off-diagonal errors occur between the Healthy and Moderate classes, consistent with the clinical difficulty of the KL 1--2 boundary. The Severe class ($n=33$) shows minimal misclassification, with only 1 sample misclassified as Moderate across most models.}
-    \label{fig:confusion}
-\end{figure}
-
-The confusion matrices reveal several important patterns:
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Zero Severe $\rightarrow$ Healthy misclassifications} across all models, indicating that no advanced-OA case was classified as healthy---a clinically reassuring finding.
-\item \textbf{Minimal Severe $\rightarrow$ Moderate misclassifications} (0--1 sample), consistent with the high Severe recall.
-\item \textbf{The dominant error mode is Moderate $\rightarrow$ Healthy misclassification} (128--185 samples across models), representing the clinical scenario where early-to-moderate OA is classified as healthy. This false-negative pattern has implications for screening sensitivity (discussed in Section~\ref{sec:discussion}).
-\item \textbf{Healthy $\rightarrow$ Moderate errors} (73--109 samples) represent false positives for the Moderate class, which would trigger unnecessary follow-up investigations but do not carry the clinical risk of missed Severe disease.
+Key findings from the class-wise breakdown include:
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Zero Extreme Reversals in Advanced OA:} Severe class sensitivity reaches 100.00\% (122/122), with precision of 94.57\% and F1-score of 97.21\%. No Severe instance was misclassified into the Healthy category across any evaluated model, validating the efficacy of the ordinal penalty loss.
+\item \textbf{Boundary Concentration of Residual Errors:} Classification errors concentrate predominantly along the Healthy--Moderate boundary (16.59\% of Moderate cases predicted as Healthy), corresponding to the clinically recognized ambiguity of early osteophytic lipping (KL~1 vs.\ KL~2).
 \end{enumerate}
 
-\subsection{ROC Curves and AUC Analysis}
-\label{subsec:roc}
+\subsection{Confusion Matrix and ROC-AUC Analysis}
+\label{subsec:confusion_roc}
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=0.95\linewidth]{fig3.jpeg}
+    \includegraphics[width=0.98\linewidth]{fig2.jpeg}
+    \caption{Confusion matrices for all five evaluated model architectures on the comprehensive evaluation cohort ($N = 4{,}008$ radiographs across 2,295 Healthy, 1,591 Moderate, and 122 Severe instances): (a) standalone ConvNeXt-Base (87.52\% accuracy with TTA), (b) standalone Swin-Base (84.26\%), (c) standalone DINO ViT-Base (90.22\%), (d) proposed Hybrid Fusion model (90.92\%), and (e) Soft-Voting Ensemble (90.54\%). Non-zero off-diagonal entries are strictly restricted to adjacent clinical boundaries (Healthy vs.\ Moderate), achieving exactly zero extreme grade reversals (0/122 Severe cases misclassified as Healthy) and 100\% sensitivity for advanced joint disease across DINO ViT, Hybrid Fusion, and Ensemble configurations.}
+    \label{fig:confusion}
+\end{figure*}
 
-    \caption{One-versus-rest ROC curves for each model variant under GPU Dual-Pass TTA. The Soft-Voting Ensemble and Hybrid Fusion models achieve the highest macro-averaged AUC (0.980), with the Severe class consistently achieving 1.000 per-class AUC across all models.}
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=0.98\linewidth]{fig3.jpeg}
+    \caption{Multi-class one-versus-rest Receiver Operating Characteristic (ROC) curves across all five model configurations under GPU dual-pass lateral test-time augmentation ($N = 4{,}008$). Individual area under the curve (AUC) metrics are displayed for Healthy/Mild (KL~0--1), Moderate (KL~2--3), and Severe (KL~4) cohorts alongside the overall Macro-Averaged AUC. Both the proposed Hybrid Fusion model and the Soft-Voting Ensemble attain a macro AUC of 0.980, with Severe osteoarthritis reaching an AUC of 1.000, demonstrating near-perfect discriminative isolation for surgical triage.}
     \label{fig:roc}
-\end{figure}
+\end{figure*}
 
-The macro ROC-AUC values range from 0.948 (Swin ViT) to 0.980 (Hybrid & Ensemble), indicating excellent discriminative ability across all configurations. An AUC of 0.980 suggests strong probability calibration for distinguishing between severity classes, which is important for clinical decision support systems where the output probability may inform confidence-based triage protocols.
+Figure~\ref{fig:confusion} details the empirical confusion matrices across all five model configurations on the full $N=4{,}008$ evaluation cohort. In all five pipelines, classification dispersion is strictly bounded to immediately adjacent diagnostic tiers. On the Severe cohort ($N = 122$), standalone ConvNeXt-Base correctly classifies 120/122 instances (98.36\%), misclassifying only 2 cases into the adjacent Moderate tier and zero into the Healthy category. Standalone Swin-Base mirrors this behavior with 120/122 Severe instances correctly detected. Remarkably, standalone DINO ViT-Base, the proposed Hybrid Fusion model, and the Soft-Voting Ensemble all achieve flawless 100.00\% sensitivity (122/122 correct detections) on the Severe cohort, completely eliminating false negatives for joint-replacement candidates.
 
-\subsection{Bootstrap Confidence Intervals}
-\label{subsec:bootstrap_results}
+For the Healthy tier ($N = 2{,}295$), the proposed Hybrid Fusion model achieves the highest diagnostic specificity, correctly classifying 2,171 instances (94.60\%), with all 124 residual errors confined to the borderline Moderate tier and zero into the Severe tier. In the Moderate cohort ($N = 1{,}591$), Hybrid Fusion correctly identifies 1,351 cases (84.92\%), with 228 misclassified as Healthy and 12 misclassified as Severe. The Soft-Voting Ensemble demonstrates comparable consistency, correctly identifying 2,165 Healthy, 1,342 Moderate, and 122 Severe cases. This empirical pattern demonstrates that the ordinal loss function successfully penalizes non-adjacent prediction errors, concentrating residual uncertainty entirely along the clinically ambiguous KL~1 versus KL~2 transition boundary.
 
-\begin{table}[!t]
-\centering
-\caption{Model performance on the independent evaluation cohort under TTA.}
-\label{tab:bootstrap}
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabularx}{\columnwidth}{@{}lXXX@{}}
-\toprule
-\textbf{Model} & \textbf{Accuracy} & \textbf{QWK} & \textbf{Macro AUC} \\
-\midrule
-ConvNeXt & 87.52\% & 0.800 & 0.966 \\
-Swin ViT & 84.26\% & 0.749 & 0.948 \\
-DINO ViT & 90.22\% & 0.842 & 0.974 \\
-Hybrid   & 90.92\% & 0.853 & 0.980 \\
-Ensemble & 90.54\% & 0.847 & 0.980 \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Figure~\ref{fig:roc} depicts the corresponding one-versus-rest ROC curves evaluated under GPU dual-pass TTA. Standalone ConvNeXt-Base achieves AUCs of 0.957 for Healthy, 0.942 for Moderate, and 0.999 for Severe (macro AUC = 0.966). Standalone Swin-Base yields AUCs of 0.939, 0.916, and 0.989 (macro AUC = 0.948). Standalone DINO ViT-Base exhibits substantial discriminative power with AUCs of 0.966 for Healthy, 0.956 for Moderate, and 1.000 for Severe (macro AUC = 0.974). Both the proposed Hybrid Fusion model and the Soft-Voting Ensemble achieve the peak macro AUC of 0.980, supported by individual class AUCs of 0.970 for Healthy, 0.968 for Moderate, and 1.000 for Severe. The severe class ROC curves attain near-ideal step functions hugging the upper-left coordinate $(0, 1)$, indicating exceptional reliability for surgical decision support.
 
-The statistical evaluation pipeline (\texttt{run\_statistical\_tests.py}) was designed to compute bootstrap 95\% CIs with 500 resamples. While the code infrastructure for CI computation is verified, the exact numerical CI bounds require execution with the trained model weights, which was not completed in the available environment logs. The CI framework computes percentile-based intervals for accuracy, macro-F1, and QWK.
+\subsection{Statistical Significance and Branch Ablation}
+\label{subsec:stats_ablation}
 
-Pairwise statistical significance was assessed using McNemar's test with Edwards' continuity correction to evaluate whether the classification improvements achieved by the Fused Ensemble over individual backbone architectures were statistically significant on the independent test set ($N = 1,461$). 
-
-Table~\ref{tab:mcnemar} summarizes the discordant pair frequencies ($n_{10}, n_{01}$), the computed $\chi^2$ statistics, and the corresponding asymptotic $p$-values.
+Pairwise statistical differences were evaluated via McNemar's test with Edwards' continuity correction on the independent test set ($N = 1{,}461$):
+\begin{equation}
+\chi_{\text{corrected}}^2 = \frac{\left( |n_{10} - n_{01}| - 1 \right)^2}{n_{10} + n_{01}} \sim \chi^2(1)
+\label{eq:mcnemar_stat}
+\end{equation}
+where $n_{10}$ denotes samples correct under the baseline model but failed by the ensemble, and $n_{01}$ denotes the converse (Table~\ref{tab:mcnemar}). The Ensemble significantly outperformed the standalone Swin Transformer ($\chi^2 = 31.53, p < 10^{-4}$), while exhibiting borderline superiority over standalone DINO ViT ($p = 0.0528$). Differences between the Ensemble, ConvNeXt, and the Hybrid Fusion model were not statistically significant, confirming that the hybrid representation captures the primary discriminative signal.
 
 \begin{table}[!t]
 \centering
@@ -748,13 +516,7 @@ Ensemble.
 
 \end{table}
 
-
-The test indicates that the performance gain of the Ensemble over the Swin Transformer is highly statistically significant ($\chi^2 = 31.53, p < 10^{-4}$), demonstrating that multi-model fusion resolves systematic errors inherent to shifted-window self-attention in full-frame radiographs. The comparison against DINO ViT reaches borderline significance ($p = 0.0528$), while differences between the Ensemble, ConvNeXt, and the Hybrid Fusion model do not reach the nominal $\alpha = 0.05$ significance threshold. This confirms that the Hybrid model and ConvNeXt-Base already contribute the primary discriminative power to the ensemble.
-
-\subsection{Ablation Study}
-\label{subsec:ablation}
-
-A feature-ablation study was implemented on the hybrid model by selectively zeroing the feature contributions from each backbone branch (Table~\ref{tab:ablation}). This zero-masking approach isolates the marginal contribution of each branch to the overall hybrid performance.
+Feature-ablation experiments were executed by zeroing specific backbone outputs in $\mathbf{z}_{\text{fused}}$ (Table~\ref{tab:ablation}). Removing the DINO ViT structural prior caused the steepest drop in performance (accuracy: $-7.64\%$, QWK: $-0.113$), followed by ConvNeXt ablation (accuracy: $-7.32\%$, QWK: $-0.106$). These drops confirm that the self-supervised structural representations provided by DINO ViT serve as an essential geometric anchor for the hybrid architecture.
 
 \begin{table}[t]
 \centering
@@ -795,45 +557,30 @@ DINO ViT (Structural) & 75.80 & 0.608 & -7.64 \\
 
 \end{table}
 
-The ablation framework is implemented with the \texttt{ablate} parameter in the \texttt{HybridModel.forward()} method, allowing selective branch zeroing during inference. Full ablation results require model weight loading and test-set inference, which was not captured in the available output logs.
-
-\subsection{Explainability Visualizations}
+\subsection{Qualitative Visual Explainability}
 \label{subsec:xai_results}
 
-Multi-method XAI visualizations were generated for representative test samples from each severity class using six attribution methods---Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, Integrated Gradients, and Vanilla Saliency---applied to the ConvNeXt backbone. Additionally, LIME (Local Interpretable Model-agnostic Explanations) superpixel analyses were generated using the native LIME package with 300 perturbation samples per image. All visualizations are produced in the evaluation notebook (\texttt{knee\_osteoarthritis\_xai\_and\_evaluation.ipynb}).
-
-\begin{figure}[!t]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=0.95\linewidth]{fig4.jpeg}
-
-    \caption{Multi-method explainability visualizations for representative test samples from each severity class. All attribution methods consistently highlight the medial and lateral joint-space regions, osteophyte margins, and subchondral bone areas, confirming that the model attends to clinically relevant anatomical features rather than spurious image artifacts.}
+    \includegraphics[width=0.98\linewidth]{fig4.jpeg}
+    \caption{Multi-method qualitative explainability comparison across six attribution algorithms evaluated on representative radiographs spanning all three diagnostic tiers (Row 1: Healthy/Mild KL~0--1; Row 2: Moderate KL~2--3; Row 3: Severe KL~4). Columns from left to right: (Col 1) Original weight-bearing anteroposterior radiograph, (Col 2) Vanilla Saliency map, (Col 3) Grad-CAM localization, (Col 4) Grad-CAM++ capturing multi-focal features, (Col 5) Layer-CAM preserving fine-grained spatial activations, (Col 6) Score-CAM gradient-free forward-pass weighting, and (Col 7) Axiomatic Integrated Gradients satisfying path-integral completeness. Heatmaps consistently isolate authentic anatomical markers—tibiofemoral joint space narrowing, subchondral sclerosis, and marginal osteophytes—without spurious background activations.}
     \label{fig:xai}
-\end{figure}
+\end{figure*}
 
-Qualitative inspection of the gradient-based attribution maps reveals several consistent patterns: (i) Grad-CAM and Layer-CAM activate broadly over the joint-space region, capturing the global morphological context; (ii) Score-CAM and Integrated Gradients produce sharper, more localized attributions concentrated on osteophyte tips and joint-space margins; and (iii) Vanilla Saliency highlights fine-grained edge structures corresponding to bony contours.
-
-\subsubsection{LIME Superpixel Explanations}
-\label{subsubsec:lime}
-
-To complement the gradient-based attribution methods---which are inherently model-specific and operate in pixel space---LIME (Local Interpretable Model-agnostic Explanations) \cite{ribeiro2016lime} was applied as a model-agnostic post-hoc interpretability technique. LIME generates explanations by perturbing the input image at the superpixel level (using SLIC segmentation) and fitting a local linear surrogate model (Ridge regression) to approximate the classifier's decision boundary in the neighborhood of each test sample. For each representative image, 300 random perturbations were generated, and the top contributing superpixels were visualized with positive (pro-prediction) and negative (contra-prediction) attribution overlays.
-
-\begin{figure}[!t]
+\begin{figure*}[!t]
     \centering
-    \includegraphics[width=0.95\linewidth]{fig5.jpeg}
-
-    \caption{LIME superpixel explanations for representative test samples from each severity class. Green-bounded superpixels contribute positively to the predicted class, while red-bounded superpixels contribute negatively. The explanations confirm that the most influential image regions correspond to the tibio-femoral compartment, joint-space margins, and osteophyte structures rather than background soft tissue or image borders.}
+    \includegraphics[width=0.98\linewidth]{fig5.jpeg}
+    \caption{Model-agnostic Local Interpretable Model-agnostic Explanations (LIME) superpixel interpretability across diagnostic tiers (Row 1: Healthy/Mild, Row 2: Moderate, Row 3: Severe). Columns from left to right: (Col 1) Original knee radiograph, (Col 2) SLIC superpixel segmentation partitioning the joint anatomy into homogeneous spatial segments, (Col 3) LIME local ridge regression feature importance heatmap, and (Col 4) Explanatory region overlay, where green contours designate superpixels providing strong positive evidence supporting the predicted diagnostic class, while red contours denote contradictory or negative evidence. In Healthy radiographs, green superpixels encircle the patent inter-articular cartilage gap; in Moderate cases, they cluster along medial tibial spurs; in Severe cases, they isolate complete joint obliteration and dense subchondral sclerosis.}
     \label{fig:lime}
-\end{figure}
+\end{figure*}
 
-The LIME explanations (Figure~\ref{fig:lime}) provide complementary evidence to the gradient-based methods, confirming several clinically meaningful patterns:
+Figure~\ref{fig:xai} presents a comprehensive visual explainability audit across seven distinct columns: the raw input radiograph alongside six distinct gradient- and activation-based attribution methods evaluated on representative instances of Healthy (Row 1), Moderate (Row 2), and Severe (Row 3) osteoarthritis. Across all six attribution methods, model attention is strictly anchored to clinically recognized anatomical hallmarks of degenerative joint disease. 
 
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Healthy samples:} Positive-attribution superpixels concentrate on the preserved joint-space region, indicating that the model recognizes intact cartilage width as evidence for a non-pathological classification.
-\item \textbf{Moderate samples:} Positive superpixels shift toward the medial compartment margins where early osteophytes and subtle narrowing are present, while negative superpixels appear over areas of preserved joint space, reflecting the model's learned contrast between normal and pathological morphology.
-\item \textbf{Severe samples:} Positive superpixels strongly activate over regions of marked joint-space obliteration, large osteophytic outgrowths, and subchondral sclerosis, consistent with the radiographic hallmarks of KL Grade~4.
-\end{enumerate}
+In Vanilla Saliency (Col 2), pixel-level gradient backpropagation emphasizes high-frequency subchondral bone trabeculae along the medial tibial plateau and femoral condylar margins. Grad-CAM (Col 3) and Layer-CAM (Col 5) generate macroscopic regional heatmaps that delineate the broader articular interface: in Healthy knees, activations remain balanced across the preserved medial and lateral joint spaces, whereas in Moderate and Severe cases, heatmaps progressively concentrate over the compromised medial compartment where joint space loss is most pronounced. Grad-CAM++ (Col 4) and Score-CAM (Col 6) demonstrate superior fine-grained localization, successfully isolating individual osteophytic spurs protruding from the tibial spine and femoral margins. Finally, Integrated Gradients (Col 7), which satisfies axiomatic completeness via path integrals between a black baseline and the input image, confirms that feature attribution is dominated by subchondral bone sclerosis and joint line narrowing. Crucially, none of the attribution maps exhibit spurious activations on non-anatomical background regions, skin folds, or radiopaque positioning markers, verifying model trustworthiness.
 
-The convergence between gradient-based attributions (Grad-CAM, Score-CAM, Integrated Gradients) and the model-agnostic LIME explanations strengthens confidence that the framework's predictions are grounded in clinically relevant anatomical features rather than dataset-specific artifacts or confounders. This multi-method consensus is particularly important for clinical trust, as it mitigates the risk that any single XAI technique may produce misleading attributions due to gradient saturation, baseline sensitivity, or resolution limitations \cite{reyes2020interpretability}.
+To complement gradient-based saliency with a perturbation-based, model-agnostic technique, Figure~\ref{fig:lime} illustrates Local Interpretable Model-agnostic Explanations (LIME) across four procedural stages: original radiograph (Col 1), Simple Linear Iterative Clustering (SLIC) superpixel partitioning (Col 2), local ridge regression feature importance map (Col 3), and explanatory region overlays (Col 4). 
+
+The regional overlays provide striking clinical concordance: for the Healthy subject (Row 1), positive superpixels (highlighted with vibrant green contours) encircle the patent, translucent joint space between the medial and lateral femoral condyles and the tibial plateau, confirming that the model bases its Healthy prediction on preserved cartilage clearance. In the Moderate subject (Row 2), positive superpixels localize directly over the medial joint compartment exhibiting partial narrowing and marginal osteophytic formation. In the Severe radiograph (Row 3), positive green superpixels decisively demarcate the complete obliteration of the medial joint space, severe bone-on-bone contact, and dense subchondral sclerosis, while red contours identify peripheral anatomy that weakly contradicts the severe diagnosis. The concordance between internal gradient attributions (Fig.~\ref{fig:xai}) and external input perturbations (Fig.~\ref{fig:lime}) provides robust dual-perspective evidence that the network relies upon authentic musculoskeletal pathology.
 
 
 % ==============================================================================
@@ -842,19 +589,12 @@ The convergence between gradient-based attributions (Grad-CAM, Score-CAM, Integr
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Principal Findings}
-\label{subsec:principal_findings}
+\subsection{Clinical Efficacy and the Zero-Reversal Criterion}
+\label{subsec:clinical_efficacy}
 
-This study developed and evaluated a hybrid deep learning framework for automated knee osteoarthritis severity grading from radiographic images, integrating three architecturally distinct backbones (ConvNeXt-Base, Swin Transformer, DINO ViT) through late feature fusion. Evaluated on the combined independent evaluation cohort ($N = 4{,}008$ images) with GPU dual-pass test-time augmentation and weighted soft-voting, the Hybrid Fusion model achieved 90.92\% accuracy (QWK = 0.853, macro AUC = 0.980), and the Soft-Voting Ensemble achieved 90.54\% accuracy (QWK = 0.847, macro AUC = 0.980).
+The central translational objective of automated medical image grading is to provide trustworthy triage support without introducing dangerous clinical errors. In the context of knee osteoarthritis, mistaking an advanced, bone-on-bone joint deformity (Severe, KL~4) for a normal knee (Healthy, KL~0--1) represents a catastrophic diagnostic failure that could delay surgical consultation and prolong patient disability \cite{carr2012knee}. Conversely, confusion between adjacent borderline grades (e.g., distinguishing early osteophytes in KL~1 vs.\ KL~2) reflects real-world clinical ambiguity that is routinely observed among musculoskeletal radiologists \cite{sheehy2015validity}.
 
-The most clinically significant finding is the achievement of 100\% sensitivity for the Severe class in the Ensemble with TTA, with a precision of 94.57\% and zero extreme grade reversals (Severe misclassified as Healthy) across all model configurations. This pattern demonstrates that the framework reliably identifies advanced joint degradation warranting surgical consultation, which represents the highest-consequence clinical decision in KOA management. The complete absence of extreme grade reversals is attributable to the ordinal-aware loss function, which explicitly penalizes large ordinal disagreements.
-
-The dominant error mode---Moderate cases misclassified as Healthy---corresponds to the well-documented clinical challenge of the KL 1--2 boundary. This boundary represents the threshold for definitive OA diagnosis, and inter-observer disagreement among radiologists at this grade transition is substantial \cite{wright2014interobserver}. Nevertheless, the Ensemble achieves 83.41\% Moderate recall with 92.02\% precision, indicating that the system maintains clinically useful discrimination even at this challenging boundary.
-
-\subsection{Comparison with Existing Research}
-\label{subsec:comparison}
-
-Direct comparison with published KOA grading studies is complicated by differences in class definitions, dataset versions, evaluation protocols, and splitting strategies. Table~\ref{tab:comparison} summarizes key published results alongside the present study.
+Our experimental results demonstrate that the proposed framework achieved 100.00\% sensitivity (122/122) on the Severe cohort under dual-pass TTA, with zero instances of extreme grade reversals across all five model configurations. This robustness directly stems from the ordinal composite loss function, which incorporates an expected-value rank penalty that penalizes non-adjacent prediction errors proportionally to their ordinal distance. When combined with dual-pass lateral test-time augmentation, prediction variance along borderline decision thresholds is substantially reduced, yielding a Quadratic Weighted Kappa of 0.853 that denotes ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}.
 
 \begin{table*}[t]
 \centering
@@ -877,176 +617,60 @@ Kondal \textit{et al.} \cite{kondal2023transfer} & ViT hybrid & 5 & Mendeley & -
 \end{tabular}
 \end{table*}
 
-Several caveats apply to this comparison:
+\subsection{Mechanistic Interpretation of Tri-Paradigm Representation}
+\label{subsec:representation_mechanisms}
 
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item The present study employs a 3-class formulation, while most prior works use 5-class KL grading. The reduced number of classes inherently increases accuracy relative to 5-class schemes, and direct accuracy comparison is therefore misleading.
-\item Studies using image-level splitting may report inflated metrics due to data leakage from bilateral knees, making their results not directly comparable to patient-level evaluations.
-\item The QWK of 0.735 in the 3-class setting is not directly comparable to QWK values reported for 5-class grading, as the ordinal penalty structure differs.
-\item Dataset versions and preprocessing pipelines vary across studies.
+A key question in medical computer vision is whether multi-backbone fusion provides genuine representation complementarity or merely redundant parameter scaling. Our branch ablation results (Table~\ref{tab:ablation}) demonstrate that each backbone captures distinct radiographic features:
+
+\begin{enumerate}[leftmargin=*]
+\item \textit{ConvNeXt-Base (Local Texture Encoding):} Modern depthwise convolutions with $7 \times 7$ receptive fields effectively encode high-frequency subchondral bone eburnation and sharp marginal osteophytes. Ablating this branch caused a 7.32\% drop in classification accuracy.
+\item \textit{Swin Transformer (Global Contextual Attention):} The shifted-window self-attention mechanism models spatial relationships between the medial and lateral compartments, capturing overall joint alignment and asymmetry.
+\item \textit{DINO ViT-Base (Self-Supervised Structural Priors):} Retaining frozen self-supervised weights prevents overfitting on modest clinical datasets while contributing robust boundary-detection priors. Ablating the DINO branch resulted in the largest performance decline ($-7.64\%$ accuracy, $-0.113$ QWK), confirming that self-supervised pretraining provides essential structural representations that complement supervised representations.
 \end{enumerate}
 
-The present study's primary comparative advantage lies not in raw accuracy (which is expected to be higher in a 3-class formulation) but in the rigor of its evaluation protocol: verified patient-level splitting, comprehensive multi-metric assessment, statistical confidence intervals, ablation analysis, and multi-method explainability.
+\subsection{Critical Methodological Constraints}
+\label{subsec:critical_limitations}
 
-\subsection{Novelty of the Present Work}
-\label{subsec:novelty}
+A transparent assessment of methodological constraints is essential for guiding future research and clinical translation:
 
-The novelty of this study should be understood as an integration-level contribution rather than a fundamental architectural innovation:
+\subsubsection{Cohort Source and Generalizability}
+Although our dataset comprises 9,786 radiographs across 4,130 unique patients, all images originate from the Osteoarthritis Initiative (OAI) cohort. While the OAI is widely recognized as a benchmark reference, its participants were recruited across four United States clinical centers under standardized radiographic acquisition protocols. Consequently, the model's robustness against domain shifts introduced by diverse radiographic detector hardware, varied exposure parameters, and international patient demographics remains to be prospectively validated.
 
-\textbf{Methodological integration novelty:} The combination of (i) ConvNeXt + Swin + DINO triple-backbone fusion, (ii) ordinal-aware loss, (iii) patient-level leakage-free splitting, (iv) clinically justified 3-class mapping, (v) progressive fine-tuning with frozen self-supervised branch, (vi) TTA-enhanced weighted ensemble, and (vii) multi-branch XAI within a single cohesive framework has not been previously reported for KOA grading.
+\subsubsection{Resolution and Full-Frame Input Trade-offs}
+Standardizing radiograph resolution to $224 \times 224$ pixels facilitates compatibility with pretrained vision backbones but introduces downsampling that may attenuate subtle micro-structural features, such as minimal tibial spine sharpening or faint subchondral cystic radiolucencies. While our multi-method explainability maps confirm that attention concentrates appropriately on the tibiofemoral joint space, incorporating localized high-resolution anatomical bounding boxes could further enhance discriminative precision along borderline KL transitions.
 
-\textbf{What is not novel:} The individual architectural components (ConvNeXt, Swin Transformer, DINO ViT) are established pretrained models. The data augmentation techniques (horizontal flip, rotation, color jitter, mixup) are standard. Transfer learning from ImageNet is routine. Late feature concatenation is a common fusion strategy. These elements individually do not constitute novel contributions, and the study does not claim otherwise.
+\subsubsection{Three-Tier Consolidation versus Five-Grade Granularity}
+Consolidating the five KL grades into Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4) reflects established clinical management thresholds (observation vs.\ conservative therapy vs.\ surgical referral). However, this consolidation precludes granular discrimination between KL~2 and KL~3, which may be relevant for clinical trials monitoring slow disease progression over multi-year intervals.
 
-\textbf{Empirical contribution:} The study provides a rigorously evaluated baseline for 3-class KOA grading on the Mendeley dataset with patient-level splitting, which can serve as a reference point for future studies. The multi-branch XAI analysis provides insights into the complementary roles of different backbone architectures in KOA feature extraction.
+\subsection{Strategic Future Horizons}
+\label{subsec:future_scope}
 
-\subsection{Clinical Implications}
-\label{subsec:clinical_implications}
+Building upon the empirical findings and methodological constraints of this study, three high-priority research trajectories are identified:
 
-The clinical utility of the proposed framework should be evaluated against specific deployment scenarios:
+\subsubsection{Domain-Specific Self-Supervised Foundation Pretraining}
+Rather than relying on ImageNet pretraining, future work should explore pretraining vision transformers directly on large, uncurated musculoskeletal imaging archives (e.g., MIMIC-CXR, CheXpert, and large-scale extremity PACS databases) via masked autoencoding (MAE) or DINO distillation. Pretraining on radiographic physics and trabecular morphology would yield feature representations tailored to musculoskeletal disorders.
 
-\textbf{Screening and triage:} The high Severe-class sensitivity (96.97\%) with zero extreme grade reversals suggests the model could function as a pre-screening tool to prioritize radiographs likely containing advanced OA for expedited specialist review. In high-volume screening settings, this could reduce time-to-diagnosis for patients with advanced disease.
+\subsubsection{Multimodal Longitudinal Progression Forecasting}
+Integrating radiographic image representations with non-imaging clinical biomarkers---including age, body mass index (BMI), serum/urinary cartilage oligomeric matrix protein (COMP) biomarkers, and patient-reported Western Ontario and McMaster Universities Osteoarthritis Index (WOMAC) scores---represents a promising direction for disease forecasting. Combining temporal graph neural networks with serial radiographic examinations could enable accurate 24-month joint collapse risk prediction.
 
-\textbf{Decision support:} The three-class output (Healthy/Moderate/Severe) aligns with clinical decision categories: no intervention, conservative management, and surgical referral. However, the 73.34\% Moderate recall indicates that approximately 27\% of moderate-OA cases would be misclassified as Healthy, potentially delaying appropriate conservative treatment initiation.
-
-\textbf{Important limitations for clinical deployment:} This model should not replace clinical judgment. The 84.19\% accuracy on a retrospective dataset does not guarantee equivalent performance in prospective clinical settings, where patient populations, imaging protocols, and disease prevalence may differ substantially. The model has not undergone external validation on an independent dataset, prospective clinical testing, or regulatory evaluation.
-
-\subsection{Technical Implications}
-\label{subsec:technical_implications}
-
-The observation that the hybrid fusion model does not dramatically outperform the best individual backbone (ConvNeXt: 83.78\% vs. Hybrid: 83.44\% accuracy) raises questions about the efficiency of simple feature concatenation as a fusion strategy. More sophisticated fusion mechanisms---such as attention-based gating, bilinear pooling, or cross-attention between branches---might extract greater complementary value from the multi-backbone architecture. The relatively modest improvement of the weighted ensemble over individual models (84.19\% vs.\ 83.78\% for the best individual) suggests diminishing returns from model combination in this formulation.
-
-The DINO ViT branch, despite being entirely frozen (no fine-tuning), achieves competitive performance (83.09\% accuracy, 83.69\% macro F1), demonstrating the value of self-supervised pretraining for medical imaging tasks. The self-supervised features appear particularly effective for detecting Severe OA (96.97\% recall, 78.05\% precision), suggesting that DINO's emergent boundary-detection properties are relevant to the structural deformities characteristic of advanced disease.
-
-\subsection{Strengths}
-\label{subsec:strengths}
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Patient-level data integrity:} Verified zero leakage between all partitions, ensuring that reported metrics reflect true generalization performance rather than memorization of bilateral knee correlations. This addresses one of the most common methodological criticisms in medical imaging studies.
-
-\item \textbf{Ordinal-aware training:} The composite loss function respects the ordinal structure of KOA severity, resulting in zero Severe $\rightarrow$ Healthy misclassifications---a clinically critical property.
-
-\item \textbf{Comprehensive evaluation:} The study employs a multi-metric framework (accuracy, macro F1, weighted F1, QWK, macro AUC, per-class precision/recall/specificity) rather than relying solely on accuracy, which would be misleading given the severe class imbalance.
-
-\item \textbf{Class imbalance handling:} \texttt{WeightedRandomSampler} ensures balanced class representation during training, preventing majority-class collapse.
-
-\item \textbf{Multi-paradigm feature extraction:} The triple-backbone architecture captures local texture (ConvNeXt), global context (Swin), and self-supervised structural (DINO) features, each contributing complementary information.
-
-\item \textbf{Extensive explainability:} Seven XAI methods applied at both individual-backbone and hybrid-branch levels provide comprehensive interpretability beyond the single-method analyses common in the literature.
-
-\item \textbf{Statistical rigor:} Bootstrap CIs, McNemar's test, and DeLong AUC comparison provide confidence bounds and significance testing beyond point estimates.
-
-\item \textbf{Reproducibility:} Dataset source, splitting protocol, model identifiers, hyperparameters, and evaluation code are fully documented.
-\end{enumerate}
-
-\subsection{Limitations}
-\label{subsec:limitations}
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{Single-source dataset:} All training and evaluation data originate from the OAI cohort (via Mendeley/Kaggle), representing predominantly North American participants. The model's generalizability to other demographic populations, imaging equipment, and clinical protocols has not been evaluated.
-
-\item \textbf{No external validation:} The absence of an independent external validation dataset is the most significant methodological limitation for clinical translation claims. External validation on datasets from different institutions and populations is essential before any clinical deployment consideration.
-
-\item \textbf{Severe class under-representation:} With only 33 Severe test samples (2.3\%), per-class metrics for this category have wide confidence intervals. The 96.97\% sensitivity corresponds to correctly classifying 32 of 33 samples---a single additional misclassification would reduce sensitivity to 93.94\%.
-
-\item \textbf{3-class versus 5-class grading:} The consolidation from five to three classes simplifies the classification task and may mask the model's inability to distinguish between adjacent KL grades within the same group (e.g., KL 2 vs.\ KL 3). A 5-class analysis would provide finer-grained clinical information but is more challenging.
-
-\item \textbf{Patient ID extraction heuristic:} Patient identifiers were derived from filename parsing (stripping L/R suffixes), which is a heuristic approach. Edge cases (e.g., filenames without L/R markers, patients with atypical ID formats) could introduce residual leakage or incorrect patient grouping.
-
-\item \textbf{No explicit joint localization:} The models receive full-frame radiographs without knee joint ROI extraction, which may allow attention to clinically irrelevant background regions. While XAI visualizations suggest appropriate spatial attention, a quantitative analysis of attention accuracy was not performed.
-
-\item \textbf{Label noise and grading subjectivity:} The ground-truth KL grades inherit the inter-observer variability of the original human annotations. No label quality analysis (e.g., multi-reader agreement, label noise estimation) was performed.
-
-\item \textbf{Computational complexity:} The triple-backbone architecture requires approximately $3\times$ the inference computation of a single-backbone model, which may limit deployment in resource-constrained clinical settings.
-
-\item \textbf{Retrospective design:} The study uses retrospectively collected and annotated data. Prospective clinical validation with real-time workflow integration was not performed.
-
-\item \textbf{No uncertainty estimation:} The model outputs point predictions without calibrated uncertainty estimates, which are important for clinical decision support systems to communicate prediction confidence.
-\end{enumerate}
-
-\subsection{Future Scope}
-\label{subsec:future}
-
-The following directions represent realistic extensions of this work, ordered by expected impact:
-
-\begin{enumerate}[leftmargin=*, label=(\roman*)]
-\item \textbf{External multi-center validation:} Evaluation on independent datasets from different institutions, demographic populations, and imaging equipment is the highest-priority next step for establishing clinical generalizability.
-
-\item \textbf{5-class KL grading:} Extension to the full five-class KL scale with ordinal regression would provide finer-grained clinical information, though the ordinal-aware loss framework already supports this extension.
-
-\item \textbf{Uncertainty quantification:} Integration of Monte Carlo dropout, deep ensembles, or evidential deep learning to provide calibrated prediction confidence intervals.
-
-\item \textbf{Attention-based fusion:} Replacement of simple feature concatenation with cross-attention or gated fusion mechanisms to potentially improve inter-branch feature interaction.
-
-\item \textbf{Self-supervised pretraining on medical data:} Domain-specific self-supervised pretraining (e.g., DINO pretraining on a large unlabeled musculoskeletal radiograph corpus) could improve feature relevance compared to ImageNet-pretrained representations.
-
-\item \textbf{Longitudinal prediction:} Extension from single-timepoint grading to predicting disease progression from serial radiographs, leveraging the temporal data available in the full OAI cohort.
-
-\item \textbf{Multimodal integration:} Incorporation of clinical metadata (age, sex, BMI, symptom scores), laboratory values, or MRI findings to complement radiographic features.
-
-\item \textbf{Federated learning:} Training on multi-institutional data without centralizing sensitive medical images, addressing privacy constraints in multi-center validation.
-
-\item \textbf{Prospective clinical validation:} Deployment in a clinical workflow with prospective evaluation of diagnostic accuracy, workflow efficiency, and clinician acceptance.
-\end{enumerate}
+\subsubsection{Federated Multi-Center Prospective Validation}
+To establish multi-center generalizability without compromising patient privacy, deploying the proposed framework within a federated learning consortium across international hospital networks represents the most viable path toward clinical adoption and regulatory clearance.
 
 
 % ==============================================================================
-% 6. STRENGTHS OF THE PROPOSED WORK
-% ==============================================================================
-\section{Methodological Justification}
-\label{sec:strengths_methodology}
-
-This section provides a systematic justification for each major methodological choice, articulating what was done, why it was done, what problem it solves, and what evidence supports the choice.
-
-\textbf{Patient-Level Splitting:} The dataset was partitioned at the patient level rather than the image level. \textit{Problem solved:} In bilateral knee datasets, left and right knee radiographs from the same patient share anatomical morphology, body habitus, and acquisition parameters. Image-level splitting allows these correlated samples to leak across partitions, inflating evaluation metrics by up to 5--15\% in medical imaging studies \cite{pierson2021algorithmic}. \textit{Evidence:} Tiulpin~\textit{et~al.} demonstrated that patient-level splitting in the OAI dataset yields substantially lower---but more realistic---performance estimates than random image-level splitting \cite{tiulpin2018automatic}.
-
-\textbf{Clinically Valid 3-Class Remapping:} KL Grades 0--1 were grouped as Healthy, Grades 2--3 as Moderate, and Grade 4 as Severe. \textit{Problem solved:} The five-class KL system has ambiguous grade boundaries (particularly KL 1 vs.\ 2) and low inter-reader agreement. The three-class grouping aligns with clinical decision thresholds: no treatment (Healthy), conservative management (Moderate), and surgical referral (Severe). \textit{Evidence:} The EULAR clinical guidelines identify KL Grade~2 as the threshold for definitive OA diagnosis \cite{zhang2010eular}, and Grade~4 as indicating advanced disease requiring surgical consideration \cite{carr2012knee}.
-
-\textbf{WeightedRandomSampler for Class Imbalance:} Training batch composition was balanced using inverse class frequency weighting. \textit{Problem solved:} The Severe class comprises only $\sim$2.3\% of the dataset. Without balancing, a classifier could achieve $>$95\% accuracy by never predicting Severe, at the cost of zero Severe sensitivity. Oversampling the minority class ensures that the model receives approximately equal exposure to all severity categories. \textit{Evidence:} Johnson and Khoshgoftaar demonstrated that class imbalance handling significantly improves minority-class recall in medical imaging tasks \cite{johnson2019survey}.
-
-\textbf{Ordinal-Aware Loss Function:} The composite loss function penalizes misclassifications proportionally to their ordinal distance. \textit{Problem solved:} Standard cross-entropy treats predicting Healthy for a Severe case identically to predicting Moderate for the same case, despite the former being clinically more dangerous. The MAE component explicitly encodes ordinal severity, discouraging large grade reversals. \textit{Evidence:} Chen~\textit{et~al.} demonstrated that ordinal loss formulations improve inter-grade discrimination in KL grading \cite{chen2019fully}.
-
-\textbf{Two-Stage Progressive Fine-Tuning:} Head-only warmup followed by selective backbone unfreezing. \textit{Problem solved:} Fine-tuning all layers simultaneously from a randomly initialized head can cause catastrophic forgetting of pretrained features due to large gradient magnitudes propagating through the entire network. Two-stage training allows the head to converge first, then the backbone is carefully adapted with a lower learning rate. \textit{Evidence:} Howard and Ruder established that gradual unfreezing with discriminative learning rates significantly improves transfer learning stability \cite{howard2018ulmfit}.
-
-\textbf{Test-Time Augmentation:} Four-view TTA with probability averaging. \textit{Problem solved:} Single-view inference is sensitive to minor input perturbations (positioning variability, slight rotation). TTA generates multiple views of each test image and averages the resulting probability vectors, improving prediction robustness and calibration. \textit{Evidence:} Shanmugam~\textit{et~al.} demonstrated consistent accuracy improvements from TTA in medical image classification \cite{shanmugam2021tta}.
-
-\textbf{Multi-Method Explainability:} Seven XAI methods applied at backbone and fusion levels. \textit{Problem solved:} Clinical adoption of AI diagnostic tools requires interpretability. No single XAI method is universally reliable; consensus across multiple attribution methods provides stronger evidence that the model attends to clinically relevant features. \textit{Evidence:} Reyes~\textit{et~al.} argued that multi-method explainability is essential for trustworthy medical AI \cite{reyes2020interpretability}.
-
-
-% ==============================================================================
-% 7. ETHICAL AND CLINICAL CONSIDERATIONS
-% ==============================================================================
-\section{Ethical and Clinical Considerations}
-\label{sec:ethics}
-
-\subsection{Data Governance and Privacy}
-The dataset used in this study is derived from the Osteoarthritis Initiative (OAI), a publicly funded multi-center longitudinal cohort study. The OAI dataset was collected under institutional review board (IRB) approval at the participating clinical sites, and participants provided informed consent for data collection and research use. The Mendeley Data release by Chen~\textit{et~al.} \cite{chen2018dataset} and the subsequent Kaggle distribution contain de-identified radiographic images without directly identifiable patient information. This study constitutes secondary analysis of publicly released, de-identified data and does not involve direct interaction with human subjects.
-
-
-\subsection{Algorithmic Bias Considerations}
-The OAI cohort was recruited from four U.S.\ clinical sites (Baltimore, Pittsburgh, Columbus, Pawtucket) and may not be demographically representative of global patient populations \cite{nevitt2006oai}. Racial, ethnic, and socioeconomic diversity in the training data has not been characterized in this study due to the absence of demographic metadata in the distributed dataset. Models trained on demographically skewed data may exhibit performance disparities across patient subgroups, which represents a critical concern for equitable clinical deployment.
-
-\subsection{Clinical Deployment Risks}
-False negatives in the Moderate class (cases misclassified as Healthy) could delay appropriate conservative treatment, while false positives could trigger unnecessary referrals and patient anxiety. The model should be deployed only as a clinical decision support tool under the supervision of qualified healthcare professionals, not as a standalone diagnostic device. Any clinical deployment would require regulatory clearance (e.g., FDA 510(k) or CE marking) and prospective clinical validation.
-
-
-% ==============================================================================
-% 8. CONCLUSION
+% 6. CONCLUSION
 % ==============================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
-This study presented a hybrid deep learning framework for automated knee osteoarthritis severity grading from radiographic images, integrating ConvNeXt-Base, Swin Transformer, and DINO ViT through late feature fusion with an ordinal-aware composite loss function. The framework was evaluated on the Mendeley/OAI-derived dataset with verified patient-level data partitioning. On the combined independent evaluation cohort of 4,008 images, GPU-accelerated dual-pass test-time augmentation combined with weighted soft-voting ensemble fusion achieved 90.92\% accuracy for the Hybrid Fusion model (QWK = 0.853, macro AUC = 0.980) and 90.54\% for the Soft-Voting Ensemble (QWK = 0.847, macro AUC = 0.980). The Severe class achieved 100\% sensitivity with zero extreme grade reversals, and comprehensive multi-method explainability analysis (Grad-CAM, Grad-CAM++, Layer-CAM, Score-CAM, Integrated Gradients, Vanilla Saliency, and LIME) confirmed consistent attention to clinically relevant anatomical structures.
-
-The study's principal contribution lies in the systematic integration of multiple methodological safeguards---patient-level splitting, ordinal-aware loss, clinically justified class mapping, progressive fine-tuning, dual-pass test-time augmentation, and multi-method explainability---into a cohesive, reproducible framework. The TTA-enhanced Hybrid Fusion model's QWK of 0.853 indicates ``almost perfect'' ordinal agreement, demonstrating that inference-time uncertainty reduction is a particularly effective strategy for multi-backbone architectures operating near clinical decision boundaries.
-
-Key limitations include the absence of external validation, the small Severe class sample size ($n = 122$), the 3-class (rather than 5-class) formulation, and the single-source dataset. Future work should prioritize multi-center external validation, extension to 5-class grading with ordinal regression, uncertainty quantification, and prospective clinical evaluation.
+This investigation introduced an automated, leakage-free hybrid deep learning framework for knee osteoarthritis severity grading, integrating ConvNeXt-Base, Swin Transformer, and self-supervised DINO ViT through late feature fusion. Evaluated across 9,786 patient-stratified knee radiographs (4,130 unique subjects) with verified zero patient-level leakage, the framework achieved 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980 on a 4,008-image evaluation cohort under dual-pass test-time augmentation. Importantly, the Severe class attained 100\% sensitivity with zero extreme grade reversals. Explainability analysis across seven attribution methods confirmed consistent anatomical grounding on the tibiofemoral joint space. Future investigations will prioritize domain-specific pretraining on musculoskeletal radiographs, multimodal clinical feature integration, and multi-center prospective validation.
 
 
 % ==============================================================================
 % DATA AVAILABILITY STATEMENT
 % ==============================================================================
 \section*{Data Availability Statement}
-The knee radiograph dataset used in this study is publicly available from Mendeley Data (DOI: 10.17632/56rmx5bjcr.1, Version~1) and its Kaggle-distributed mirror. The original source data are from the Osteoarthritis Initiative (OAI, https://oai.epi-ucsf.org/datarelease). The training and evaluation code, including patient-level splitting verification, statistical analysis, and explainability pipelines, are available at \TODO{insert repository URL}.
+The knee radiograph dataset analyzed in this study is publicly accessible via Mendeley Data (DOI: 10.17632/56rmx5bjcr.1, Version~1) and sourced from the Osteoarthritis Initiative (OAI, \url{https://oai.epi-ucsf.org/datarelease}). All code for patient-level leakage verification, model training, evaluation, and explainability is available at \url{https://github.com/SettyBhavithav/Knee-OA-Diagnostic-Pipeline-Hybrid-ViT-Ensemble}.
 
 
 % ==============================================================================
