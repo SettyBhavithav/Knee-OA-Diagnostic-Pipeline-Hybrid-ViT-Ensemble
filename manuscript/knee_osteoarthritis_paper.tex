@@ -201,9 +201,12 @@ In addition to the core 8,260-image classification set, a supplementary partitio
 \centering
 \caption{Patient-level dataset stratification and secondary evaluation subsets.}
 \label{tab:data_split}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{lccc}
 \toprule
-\textbf{Partition} & \textbf{Unique Patients} & \textbf{Radiographs} & \textbf{Core Split (\%)} \\
+\textbf{Partition} & \textbf{Patients} & \textbf{Radiographs} & \textbf{Split (\%)} \\
 \midrule
 \multicolumn{4}{l}{\textit{Mutually Exclusive Core Classification Cohort:}} \\
 Training ($\mathcal{P}_{\text{Train}}$) & 2,889 & 5,778 & 70.0 \\
@@ -238,9 +241,13 @@ Table~\ref{tab:class_dist} reports the class distributions across the primary he
 \centering
 \caption{Class distribution across the primary held-out test partition and the composite multi-partition evaluation cohort.}
 \label{tab:class_dist}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{lcccc}
 \toprule
-\multirow{2}{*}{\textbf{Diagnostic Class}} & \multicolumn{2}{c}{\textbf{Held-Out Test ($N=1{,}656$)}} & \multicolumn{2}{c}{\textbf{Composite Cohort ($N=4{,}008$)}} \\
+\multirow{3}{*}{\textbf{Diagnostic Class}} & \multicolumn{2}{c}{\textbf{Held-Out Test}} & \multicolumn{2}{c}{\textbf{Composite Cohort}} \\
+ & \multicolumn{2}{c}{\textbf{($N = 1{,}656$)}} & \multicolumn{2}{c}{\textbf{($N = 4{,}008$)}} \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5}
  & \textbf{Samples} & \textbf{\%} & \textbf{Samples} & \textbf{\%} \\
 \midrule
