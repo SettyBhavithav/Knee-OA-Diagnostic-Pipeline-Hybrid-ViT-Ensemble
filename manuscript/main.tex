@@ -87,7 +87,7 @@ ORCID: \href{https://orcid.org/0009-0001-7333-8104}{0009-0001-7333-8104}
 % ABSTRACT
 % ==============================================================================
 \begin{abstract}
-Radiographic assessment of knee osteoarthritis (KOA) under the Kellgren--Lawrence (KL) scale is impeded by high inter-observer subjectivity, bilateral data leakage in automated pipelines, and the neglect of ordinal disease progression. This study establishes a clinically focused hybrid deep learning architecture uniting three complementary visual paradigms: ConvNeXt-Base for localized subchondral bone texture, Swin Transformer for shifted-window compartment context, and DINO Vision Transformer for self-supervised structural priors. The five KL grades are mapped into three actionable diagnostic tiers: Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4). To mitigate catastrophic diagnostic errors, an expected-value ordinal penalty loss dynamically penalizes non-adjacent misclassifications during training. Evaluated across 9,786 patient-stratified radiographs (4,130 unique subjects) with verified zero patient-level leakage ($|\mathcal{P}_{\text{Train}} \cap \mathcal{P}_{\text{Test}}| = 0$), the framework was assessed on both a held-out test cohort ($N = 1{,}656$, 828 subjects) and a 4,008-image multi-partition evaluation cohort. Combining dual-pass lateral test-time augmentation with soft-voting ensemble fusion, the Hybrid model attains 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980. Critically, the Severe cohort achieves 100\% sensitivity (122/122) with zero observed extreme grade reversals into Healthy. Interpretability across seven gradient and perturbation methods confirms consistent anatomical grounding on tibiofemoral joint margins, demonstrating strong utility for clinical triage.
+Radiographic assessment of knee osteoarthritis (KOA) under the Kellgren--Lawrence (KL) scale is impeded by high inter-observer subjectivity, bilateral data leakage in automated pipelines, and the neglect of ordinal disease progression. This study establishes a triage-oriented hybrid deep learning architecture uniting three complementary visual paradigms: ConvNeXt-Base for localized subchondral bone texture, Swin Transformer for shifted-window compartment context, and DINO Vision Transformer for self-supervised structural priors. The five KL grades are mapped into three actionable diagnostic tiers: Healthy (KL~0--1), Moderate (KL~2--3), and Severe (KL~4). To mitigate catastrophic diagnostic errors, an expected-value ordinal penalty loss dynamically penalizes non-adjacent misclassifications during training. Evaluated across 9,786 patient-stratified radiographs (4,130 unique subjects) with verified zero patient-level leakage ($|\mathcal{P}_{\text{Train}} \cap \mathcal{P}_{\text{Test}}| = 0$), the framework was assessed on both a strictly isolated primary held-out test cohort ($N = 1{,}656$, 828 subjects) and an expanded 4,008-image multi-partition stress cohort. On the primary held-out test partition, the proposed Hybrid Fusion model achieves a baseline accuracy of 83.44\%, a Quadratic Weighted Kappa (QWK) of 0.721, and a macro ROC-AUC of 0.943. Under dual-pass lateral test-time augmentation on the comprehensive 4,008-image evaluation cohort, the Hybrid model attains 90.92\% accuracy, a QWK of 0.853, and a macro ROC-AUC of 0.980. Critically, the Severe cohort achieves 100\% sensitivity (122/122) with zero observed extreme grade reversals into Healthy. Interpretability across seven gradient and perturbation methods confirms consistent qualitative anatomical grounding on tibiofemoral joint margins, demonstrating strong utility for triage-oriented decision support.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -113,7 +113,7 @@ To resolve these interconnected challenges, this work introduces a unified, leak
 
 \item \textbf{Risk-Asymmetric Ordinal-Penalized Optimization:} We develop a composite loss function that couples label-smoothed categorical cross-entropy with a continuous expected-value rank penalty in label space. By explicitly penalizing the magnitude of ordinal grade displacement, the optimization manifold heavily penalizes non-adjacent prediction errors, mitigating hazardous Severe-to-Healthy misclassifications while preserving sensitivity along borderline intermediate stages.
 
-\item \textbf{Leakage-Free Clinical Validation and Multi-Branch Auditing:} Across 9,786 rigorously deduplicated radiographs from 4,130 unique subjects, we verify complete subject-level isolation across all partitions (2,889 train, 413 validation, and 828 held-out test patients). Under dual-pass lateral-reflection test-time augmentation (TTA), the hybrid framework achieves 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980 across the 4,008-image evaluation cohort, with 100\% empirical sensitivity on advanced disease ($N = 122$) and zero observed extreme reversals into Healthy. Comprehensive interpretability across seven complementary gradient and perturbation attribution techniques validates that decision boundaries are anatomically anchored to the tibiofemoral joint space.
+\item \textbf{Leakage-Controlled Retrospective Evaluation and Multi-Branch Auditing:} Across 9,786 rigorously deduplicated radiographs from 4,130 unique subjects, we verify complete subject-level isolation across all partitions (2,889 train, 413 validation, and 828 held-out test patients). On the primary untouched held-out test set ($N = 1{,}656$), the Hybrid architecture attains 83.44\% baseline accuracy (0.721 QWK, 0.943 AUC). When evaluated with dual-pass lateral-reflection test-time augmentation (TTA) on the expanded 4,008-image multi-partition cohort, the framework reaches 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980, achieving 100\% empirical sensitivity on advanced disease ($N = 122$) with zero observed extreme reversals into Healthy. Comprehensive interpretability across seven complementary gradient and perturbation attribution techniques validates that decision boundaries are qualitatively anchored to the tibiofemoral joint space.
 \end{enumerate}
 
 The remainder of this article is structured as follows. Section~\ref{sec:literature} surveys related literature and delineates the research gap. Section~\ref{sec:methodology} describes the materials, mathematical formulation, and multi-branch explainability framework. Section~\ref{sec:results} presents quantitative benchmark results, ablation dynamics, and visual attributions. Section~\ref{sec:discussion} contextualizes clinical implications, provides a critical assessment of limitations, and outlines future research trajectories. Section~\ref{sec:conclusion} concludes the paper.
@@ -386,7 +386,7 @@ Table~\ref{tab:overall_performance} summarizes the single-pass (static inference
 
 \begin{table*}[t]
 \centering
-\caption{Single-pass (static inference) model performance on the independent test set. All values are percentages except QWK and ROC-AUC (reported as decimal scores). These results represent baseline performance without test-time augmentation.}
+\caption{Single-pass (static inference) model performance on the primary patient-level held-out test partition ($N = 1{,}656$, 828 unique patients). All values are percentages except QWK and ROC-AUC (reported as decimal scores). These results represent intrinsic baseline performance without test-time augmentation.}
 \label{tab:overall_performance}
 \begin{tabular}{lccccccc}
 \toprule
@@ -556,7 +556,7 @@ Ensemble.
 
 \end{table}
 
-Feature-ablation experiments were executed by zeroing specific backbone outputs in $\mathbf{z}_{\text{fused}}$ (Table~\ref{tab:ablation}). Removing the DINO ViT structural prior caused the steepest drop in performance (accuracy: $-7.64\%$, QWK: $-0.113$), followed by ConvNeXt ablation (accuracy: $-7.32\%$, QWK: $-0.106$). These drops confirm that the self-supervised structural representations provided by DINO ViT serve as an essential geometric anchor for the hybrid architecture.
+Feature-ablation experiments were executed by zeroing specific backbone outputs in $\mathbf{z}_{\text{fused}}$ (Table~\ref{tab:ablation}). Removing the DINO ViT structural prior caused the steepest drop in performance (accuracy: $-7.64$ percentage points [pp], QWK: $-0.113$), followed by ConvNeXt ablation (accuracy: $-7.32$ pp, QWK: $-0.106$). These drops confirm that the self-supervised structural representations provided by DINO ViT serve as an essential geometric anchor for the hybrid architecture.
 
 \begin{table}[t]
 \centering
@@ -578,7 +578,7 @@ with zeros during inference.}
 \textbf{Ablated Branch} &
 \textbf{Accuracy (\%)} &
 \textbf{QWK} &
-\textbf{Drop (\%)} \\
+\textbf{$\Delta$ Accuracy (pp)} \\
 \midrule
 None (Full Hybrid) & 83.44 & 0.721 & --- \\
 ConvNeXt (Local) & 76.12 & 0.615 & -7.32 \\
@@ -591,7 +591,7 @@ DINO ViT (Structural) & 75.80 & 0.608 & -7.64 \\
 
 \parbox{\columnwidth}{%
 \footnotesize
-\textit{Note:} Relative drop calculated with respect to the unablated full hybrid model baseline (83.44\% accuracy, 0.721 QWK) on the independent held-out test set under identical inference conditions.
+\textit{Note:} $\Delta$ Accuracy denotes the absolute change in percentage points (pp) calculated with respect to the unablated full hybrid model baseline (83.44\% accuracy, 0.721 QWK) on the primary held-out test partition under identical inference conditions.
 }
 
 \end{table}
@@ -629,18 +629,18 @@ The regional overlays provide striking clinical concordance: for the Healthy sub
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Clinical Efficacy and the Zero-Reversal Criterion}
+\subsection{Diagnostic Efficacy and the Zero-Reversal Criterion}
 \label{subsec:clinical_efficacy}
 
 The central translational objective of automated medical image grading is to provide trustworthy triage support without introducing dangerous clinical errors. In the context of knee osteoarthritis, mistaking an advanced, bone-on-bone joint deformity (Severe, KL~4) for a normal knee (Healthy, KL~0--1) represents a catastrophic diagnostic failure that could delay surgical consultation and prolong patient disability \cite{carr2012knee}. Conversely, confusion between adjacent borderline grades (e.g., distinguishing early osteophytes in KL~1 vs.\ KL~2) reflects real-world clinical ambiguity that is routinely observed among musculoskeletal radiologists \cite{sheehy2015validity}.
 
-Our experimental results demonstrate that the proposed framework achieved 100.00\% sensitivity (122/122) on the Severe cohort under dual-pass TTA, with zero observed instances of extreme grade reversals (0/122 Severe-to-Healthy misclassifications) across all five model configurations on the 4,008-image evaluation cohort. These empirical observations are consistent with the ordinal composite penalty contributing to the suppression of non-adjacent prediction errors by penalizing divergence proportionally to continuous distance in label space. When combined with dual-pass lateral test-time augmentation, prediction variance along borderline decision thresholds is substantially reduced, yielding a Quadratic Weighted Kappa of 0.853 that denotes ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}. As delineated in Table~\ref{tab:comparison}, while direct accuracy comparisons must account for the difference between 3-class triage and 5-class nominal grading, the attained QWK (0.853) demonstrates competitive alignment with established radiologist-level benchmarks under strict patient-level leakage control.
+Our experimental results demonstrate that the proposed framework achieved 100.00\% sensitivity (122/122) on the Severe cohort under dual-pass TTA, with zero observed instances of extreme grade reversals (0/122 Severe-to-Healthy misclassifications) across all five model configurations on the 4,008-image evaluation cohort. These empirical observations are consistent with the ordinal composite penalty contributing to the suppression of non-adjacent prediction errors by penalizing divergence proportionally to continuous distance in label space. When combined with dual-pass lateral test-time augmentation, prediction variance along borderline decision thresholds is substantially reduced, yielding a Quadratic Weighted Kappa of 0.853 that denotes ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}. As delineated in Table~\ref{tab:comparison}, while direct accuracy comparisons must account for the difference between 3-class triage and 5-class nominal grading, both the primary held-out test baseline (83.44\% accuracy, 0.721 QWK, 0.943 AUC on $N = 1{,}656$) and the expanded multi-partition evaluation (90.92\% accuracy, 0.853 QWK, 0.980 AUC on $N = 4{,}008$) demonstrate competitive alignment with established radiologist-level benchmarks under strict patient-level leakage control.
 
 \begin{table*}[t]
 \centering
 \caption{Comparison with published deep learning methods for KOA severity grading. Direct numerical comparisons must be interpreted with caution due to differing task granularities (5-class nominal KL grading vs.\ 3-class clinically actionable triage), splitting protocols (patient-level vs.\ image-level), and imaging views. Quadratic Weighted Kappa (QWK) provides the primary chance-corrected metric for ordinal agreement across differing scales.}
 \label{tab:comparison}
-\begin{tabular}{p{3.2cm}p{2.3cm}p{1.3cm}p{1.8cm}p{2cm}p{1.5cm}p{1.2cm}p{1.5cm}}
+\begin{tabular}{p{3.5cm}p{2.3cm}p{1.1cm}p{2.0cm}p{1.9cm}p{1.4cm}p{1.1cm}p{1.4cm}}
 \toprule
 \textbf{Study} & \textbf{Architecture} & \textbf{Classes} & \textbf{Dataset} & \textbf{Split Type} & \textbf{Accuracy} & \textbf{QWK} & \textbf{AUC} \\
 \midrule
@@ -652,7 +652,8 @@ Swiecicki \textit{et al.} \cite{swiecicki2021deep} & Dual-View CNN & 5 & MOST & 
 Mohammed \textit{et al.} \cite{bany2023knee} & ResNet-101 & 5 & Mendeley & Image-level & 74.8\% & --- & --- \\
 Kondal \textit{et al.} \cite{kondal2023transfer} & Two-Stage CNN & 5 & OAI/Clinical & Patient-level & 72.3\% & --- & --- \\
 \midrule
-\textbf{Present study} & \textbf{Hybrid + TTA} & \textbf{3} & \textbf{Mendeley} & \textbf{Patient-level} & \textbf{90.92\%} & \textbf{0.853} & \textbf{0.980} \\
+\textbf{Present study (Primary Test)} & \textbf{Hybrid (Static)} & \textbf{3} & \textbf{Mendeley ($N=1{,}656$)} & \textbf{Patient-level} & \textbf{83.44\%} & \textbf{0.721} & \textbf{0.943} \\
+\textbf{Present study (Expanded)} & \textbf{Hybrid + TTA} & \textbf{3} & \textbf{Mendeley ($N=4{,}008$)} & \textbf{Patient-level} & \textbf{90.92\%} & \textbf{0.853} & \textbf{0.980} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -663,9 +664,9 @@ Kondal \textit{et al.} \cite{kondal2023transfer} & Two-Stage CNN & 5 & OAI/Clini
 A central question in medical computer vision centers on whether multi-backbone fusion provides genuine representational complementarity or simply inflates parameter overhead. Our branch ablation findings (Table~\ref{tab:ablation}) indicate that each network branch isolates distinct morphological features that cannot be synthesized by any single architecture in isolation:
 
 \begin{enumerate}[leftmargin=*]
-\item \textit{ConvNeXt-Base (Subchondral Trabecular Texture):} Depthwise separable convolutions operating over $7 \times 7$ receptive fields prove adept at resolving high-frequency subchondral bone eburnation and sharp marginal osteophytic spikes along the articular rim. Zeroing this branch induces a 7.32\% reduction in diagnostic accuracy, demonstrating that local trabecular density patterns provide indispensable diagnostic evidence.
-\item \textit{Swin Transformer (Inter-Compartmental Relational Context):} Shifted-window self-attention captures long-range spatial dependencies across the articular gap, evaluating medial-to-lateral compartment height asymmetry and overall coronal joint alignment. Without this contextual perspective, classification accuracy drops by 4.99\%.
-\item \textit{DINO ViT-Base (Invariant Articular Geometry):} Preserving frozen self-supervised weights contributes an objective structural prior that resists overfitting on modest medical imaging cohorts. Ablating DINO produces the sharpest performance deterioration ($-7.64\%$ accuracy, $-0.113$ QWK), indicating that contrastively learned anatomical boundaries serve as an essential geometric anchor for the downstream classifier.
+\item \textit{ConvNeXt-Base (Subchondral Trabecular Texture):} Depthwise separable convolutions operating over $7 \times 7$ receptive fields prove adept at resolving high-frequency subchondral bone eburnation and sharp marginal osteophytic spikes along the articular rim. Zeroing this branch induces a 7.32 percentage-point (pp) reduction in diagnostic accuracy, demonstrating that local trabecular density patterns provide indispensable diagnostic evidence.
+\item \textit{Swin Transformer (Inter-Compartmental Relational Context):} Shifted-window self-attention captures long-range spatial dependencies across the articular gap, evaluating medial-to-lateral compartment height asymmetry and overall coronal joint alignment. Without this contextual perspective, classification accuracy drops by 4.99 pp.
+\item \textit{DINO ViT-Base (Invariant Articular Geometry):} Preserving frozen self-supervised weights contributes an objective structural prior that resists overfitting on modest medical imaging cohorts. Ablating DINO produces the sharpest performance deterioration ($-7.64$ pp accuracy, $-0.113$ QWK), indicating that self-supervised distilled anatomical boundaries serve as an essential geometric anchor for the downstream classifier.
 \end{enumerate}
 
 \subsection{Critical Methodological Constraints}
@@ -703,7 +704,7 @@ To establish multi-center generalizability without compromising patient privacy,
 \section{Conclusion}
 \label{sec:conclusion}
 
-This investigation introduced an automated, leakage-free hybrid deep learning framework for knee osteoarthritis severity grading, integrating ConvNeXt-Base, Swin Transformer, and self-supervised DINO ViT through late feature fusion. Evaluated across 9,786 patient-stratified knee radiographs (4,130 unique subjects) with verified zero patient-level leakage, the framework achieved 90.92\% accuracy, a Quadratic Weighted Kappa of 0.853, and a macro ROC-AUC of 0.980 on a 4,008-image evaluation cohort under dual-pass test-time augmentation. Importantly, the Severe class attained 100\% sensitivity with zero extreme grade reversals. Explainability analysis across seven attribution methods confirmed consistent anatomical grounding on the tibiofemoral joint space. Future investigations will prioritize domain-specific pretraining on musculoskeletal radiographs, multimodal clinical feature integration, and multi-center prospective validation.
+This investigation introduced an automated, leakage-free hybrid deep learning framework for knee osteoarthritis severity grading, integrating ConvNeXt-Base, Swin Transformer, and self-supervised DINO ViT through late feature fusion. Evaluated across 9,786 patient-stratified knee radiographs (4,130 unique subjects) with verified zero patient-level leakage, the framework achieves a baseline accuracy of 83.44\%, a Quadratic Weighted Kappa of 0.721, and a macro ROC-AUC of 0.943 on the strictly isolated primary held-out test partition ($N = 1{,}656$, 828 patients). Under dual-pass lateral test-time augmentation on the expanded 4,008-image multi-partition stress cohort, the Hybrid model attains 90.92\% accuracy, a QWK of 0.853, and a macro ROC-AUC of 0.980. Critically, the Severe cohort achieved 100\% sensitivity (122/122) with zero observed extreme grade reversals into Healthy across all evaluated models. Qualitative explainability analysis across seven gradient and perturbation attribution methods confirmed consistent anatomical grounding on the tibiofemoral joint margins. Future investigations will prioritize domain-specific pretraining on musculoskeletal radiographs, multimodal clinical feature integration, and multi-center prospective validation.
 
 
 % ==============================================================================
@@ -797,7 +798,7 @@ G.~Huang, Z.~Liu, L.~van~der Maaten, and K.~Q. Weinberger, ``Densely connected c
 M.~Tan and Q.~V. Le, ``EfficientNet: Rethinking model scaling for convolutional neural networks,'' in \emph{International Conference on Machine Learning (ICML)}. PMLR, 2019, pp. 6105--6114.
 
 \bibitem{liu2021swin}
-Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Y.~Zhang, B.~Dong, and B.~Guo, ``Swin Transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 10012--10022.
+Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Z.~Zhang, S.~Lin, and B.~Guo, ``Swin Transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 10012--10022.
 
 \bibitem{liu2022convnext}
 Z.~Liu, H.~Mao, C.-Y. Wu, C.~Feichtenhofer, T.~Darrell, and S.~Xie, ``A ConvNet for the 2020s,'' in \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 2022, pp. 11976--11986.
