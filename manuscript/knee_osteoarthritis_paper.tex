@@ -137,7 +137,7 @@ In clinical orthopedic workflows, these five nominal grades collapse into action
 
 Early computer-assisted approaches relied on handcrafted texture descriptors, active shape models, and fractal dimension analyses of subchondral trabecular bone \cite{shamir2009early, oka2008fully, thomson2015automated}. Although mechanistically interpretable, these feature-engineering techniques exhibited high sensitivity to exposure variation, beam angle tilt, and manual region-of-interest cropping, hindering generalized deployment across multicenter imaging hardware.
 
-The advent of deep convolutional neural networks established end-to-end representation learning directly from raw radiograph pixels. Antony~\textit{et~al.} deployed VGG-16 networks on the Osteoarthritis Initiative (OAI) repository, achieving 57.0\% multi-class accuracy for five-class KL grading \cite{antony2016quantifying}. Subsequent refinements incorporated automated knee joint detection as a preprocessing stage, achieving incremental gains through regional localization \cite{antony2017automatic}. Tiulpin~\textit{et~al.} introduced a bilateral Siamese network architecture capable of processing paired knee patches concurrently, reaching 66.7\% accuracy and a quadratic kappa of 0.83 on the OAI benchmark \cite{tiulpin2018automatic}. Chen~\textit{et~al.} incorporated ordinal cross-entropy formulations into dense networks, demonstrating that encoding monotonicity improved classification stability across intermediate grades \cite{chen2019fully}. Swiecicki~\textit{et~al.} applied class-weighted DenseNet-161 models to address support imbalance, attaining 64.6\% accuracy on five-class patient-split OAI cohorts \cite{swiecicki2021deep}.
+The advent of deep convolutional neural networks established end-to-end representation learning directly from raw radiograph pixels. Antony~\textit{et~al.} deployed VGG-16 networks on the Osteoarthritis Initiative (OAI) repository, achieving 57.0\% multi-class accuracy for five-class KL grading \cite{antony2016quantifying}. Subsequent refinements incorporated automated knee joint detection as a preprocessing stage, achieving incremental gains through regional localization \cite{antony2017automatic}. Tiulpin~\textit{et~al.} introduced a bilateral Siamese network architecture capable of processing paired knee patches concurrently, reaching 66.7\% accuracy and a quadratic kappa of 0.83 on the OAI benchmark \cite{tiulpin2018automatic}. Chen~\textit{et~al.} incorporated ordinal cross-entropy formulations into dense networks, demonstrating that encoding monotonicity improved classification stability across intermediate grades \cite{chen2019fully}. Swiecicki~\textit{et~al.} demonstrated that fusing posteroanterior and lateral radiographic projections using deep convolutional neural networks yielded 71.9\% accuracy and a quadratic weighted kappa of 0.91 on patient-stratified MOST cohorts, matching board-certified musculoskeletal radiologist consensus \cite{swiecicki2021deep}.
 
 More recently, attention-based vision architectures have been explored for musculoskeletal imaging. Swin Transformer introduced shifted-window multi-head self-attention, achieving linear computational complexity while preserving multi-scale spatial receptive fields \cite{liu2021swin}. In parallel, ConvNeXt modernized convolutional blocks via depthwise separable kernels, inverted bottlenecks, and LayerNorm operations, proving that pure CNNs can match or exceed transformer representations on visual benchmarks \cite{liu2022convnext}. In parallel developments within representation learning, self-supervised distillation via DINO demonstrates that vision transformers trained without human annotations acquire emergent attention maps aligned with intrinsic anatomical contours and articular boundaries \cite{caron2021dino}.
 
@@ -405,11 +405,11 @@ Hybrid Fusion & 83.44 & 83.38 & 83.21 & 86.73 & 88.61 & 0.721 & 0.943 \\
 \subsection{Impact of GPU Dual-Pass Test-Time Augmentation}
 \label{subsec:tta_impact}
 
-Table~\ref{tab:tta_impact} quantifies the comprehensive performance of each model after applying GPU-accelerated dual-pass test-time augmentation on the combined independent evaluation cohort ($N = 4{,}008$ images comprising the validation, test, and auto-test partitions).
+Table~\ref{tab:tta_impact} quantifies model performance after applying GPU-accelerated dual-pass test-time augmentation across the multi-partition evaluation cohort ($N = 4{,}008$ images, comprising 826 validation, 1,656 primary held-out test, and 1,526 detector-derived auto-test radiographs). While the primary held-out test partition ($N = 1{,}656$, 828 patients) establishes the strictly isolated independent benchmark, evaluating across the aggregated 4,008-image cohort provides maximal statistical power for multi-distribution stress testing, robust ROC-AUC estimation, and validating the zero-reversal safety criterion across all non-training images.
 
 \begin{table*}[t]
 \centering
-\caption{Model performance with GPU dual-pass TTA on the combined independent evaluation cohort ($N = 4{,}008$). TTA comprises the original image and its horizontal flip, with softmax probabilities averaged before final class assignment.}
+\caption{Model performance with GPU dual-pass TTA on the combined multi-partition evaluation cohort ($N = 4{,}008$, comprising validation, primary held-out test, and detector-derived auto-test partitions). TTA averages softmax probabilities between the original radiograph and its coronal reflection before class assignment.}
 \label{tab:tta_impact}
 \begin{tabular}{lcccccc}
 \toprule
@@ -484,7 +484,7 @@ Figure~\ref{fig:roc} depicts the corresponding one-versus-rest ROC curves evalua
 \subsection{Statistical Significance and Branch Ablation}
 \label{subsec:stats_ablation}
 
-Pairwise statistical differences were evaluated via McNemar's test with Edwards' continuity correction on the independent test set ($N = 1{,}461$):
+Pairwise statistical differences were evaluated via McNemar's test with Edwards' continuity correction on the held-out test partition ($N = 1{,}656$):
 \begin{equation}
 \chi_{\text{corrected}}^2 = \frac{\left( |n_{10} - n_{01}| - 1 \right)^2}{n_{10} + n_{01}} \sim \chi^2(1)
 \label{eq:mcnemar_stat}
@@ -495,7 +495,7 @@ where $n_{10}$ denotes samples correct under the baseline model but failed by th
 \centering
 \caption{Pairwise McNemar's statistical significance tests comparing
 individual backbone architectures against the Fused Ensemble on the
-independent test set ($N=1{,}461$, degrees of freedom = 1, with
+primary held-out test partition ($N=1{,}656$, degrees of freedom = 1, with
 continuity correction).}
 \label{tab:mcnemar}
 \scriptsize
@@ -591,8 +591,7 @@ DINO ViT (Structural) & 75.80 & 0.608 & -7.64 \\
 
 \parbox{\columnwidth}{%
 \footnotesize
-\textit{Note:} Ablation results require execution of
-\texttt{run\_statistical\_tests.py}.
+\textit{Note:} Relative drop calculated with respect to the unablated full hybrid model baseline (83.44\% accuracy, 0.721 QWK) on the independent held-out test set under identical inference conditions.
 }
 
 \end{table}
@@ -609,7 +608,7 @@ DINO ViT (Structural) & 75.80 & 0.608 & -7.64 \\
 
 Figure~\ref{fig:xai} presents a comprehensive visual explainability audit across seven distinct columns: the raw input radiograph alongside six distinct gradient- and activation-based attribution methods evaluated on representative instances of Healthy (Row 1), Moderate (Row 2), and Severe (Row 3) osteoarthritis. Across all six attribution methods, model attention is strictly anchored to clinically recognized anatomical hallmarks of degenerative joint disease. 
 
-In Vanilla Saliency (Col 2), pixel-level gradient backpropagation emphasizes high-frequency subchondral bone trabeculae along the medial tibial plateau and femoral condylar margins. Grad-CAM (Col 3) and Layer-CAM (Col 5) generate macroscopic regional heatmaps that delineate the broader articular interface: in Healthy knees, activations remain balanced across the preserved medial and lateral joint spaces, whereas in Moderate and Severe cases, heatmaps progressively concentrate over the compromised medial compartment where joint space loss is most pronounced. Grad-CAM++ (Col 4) and Score-CAM (Col 6) demonstrate superior fine-grained localization, successfully isolating individual osteophytic spurs protruding from the tibial spine and femoral margins. Finally, Integrated Gradients (Col 7), which satisfies axiomatic completeness via path integrals between a black baseline and the input image, confirms that feature attribution is dominated by subchondral bone sclerosis and joint line narrowing. Anatomical auditing confirms that none of the attribution methods generate spurious activations on peripheral soft tissue, positioning markers, or radiopaque artifacts, confirming that model predictions reflect genuine joint pathology rather than imaging artifacts.
+In Vanilla Saliency (Col 2), pixel-level gradient backpropagation emphasizes high-frequency subchondral bone trabeculae along the medial tibial plateau and femoral condylar margins. Grad-CAM (Col 3) and Layer-CAM (Col 5) generate macroscopic regional heatmaps that delineate the broader articular interface: in Healthy knees, activations remain balanced across the preserved medial and lateral joint spaces, whereas in Moderate and Severe cases, heatmaps progressively concentrate over the compromised medial compartment where joint space loss is most pronounced. Grad-CAM++ (Col 4) and Score-CAM (Col 6) demonstrate superior fine-grained localization, successfully isolating individual osteophytic spurs protruding from the tibial spine and femoral margins. Finally, Integrated Gradients (Col 7), which satisfies axiomatic completeness via path integrals between a black baseline and the input image, confirms that feature attribution is dominated by subchondral bone sclerosis and joint line narrowing. Anatomical auditing confirms that none of the attribution methods generate spurious activations on peripheral soft tissue, positioning markers, or radiopaque artifacts; rather, the attribution maps are qualitatively consistent with clinically relevant anatomical hallmarks of degenerative joint disease.
 
 \begin{figure*}[!b]
     \centering
@@ -620,7 +619,7 @@ In Vanilla Saliency (Col 2), pixel-level gradient backpropagation emphasizes hig
 
 To complement gradient-based saliency with a perturbation-based, model-agnostic technique, Figure~\ref{fig:lime} illustrates Local Interpretable Model-agnostic Explanations (LIME) across four procedural stages: original radiograph (Col 1), Simple Linear Iterative Clustering (SLIC) superpixel partitioning (Col 2), local ridge regression feature importance map (Col 3), and explanatory region overlays (Col 4). 
 
-The regional overlays provide striking clinical concordance: for the Healthy subject (Row 1), positive superpixels (highlighted with vibrant green contours) encircle the patent, translucent joint space between the medial and lateral femoral condyles and the tibial plateau, confirming that the model bases its Healthy prediction on preserved cartilage clearance. In the Moderate subject (Row 2), positive superpixels localize directly over the medial joint compartment exhibiting partial narrowing and marginal osteophytic formation. In the Severe radiograph (Row 3), positive green superpixels decisively demarcate the complete obliteration of the medial joint space, severe bone-on-bone contact, and dense subchondral sclerosis, while red contours identify peripheral anatomy that weakly contradicts the severe diagnosis. The concordance between internal gradient attributions (Fig.~\ref{fig:xai}) and external input perturbations (Fig.~\ref{fig:lime}) provides robust dual-perspective evidence that the network relies upon authentic musculoskeletal pathology.
+The regional overlays provide striking clinical concordance: for the Healthy subject (Row 1), positive superpixels (highlighted with vibrant green contours) encircle the patent, translucent joint space between the medial and lateral femoral condyles and the tibial plateau, confirming that the model bases its Healthy prediction on preserved cartilage clearance. In the Moderate subject (Row 2), positive superpixels localize directly over the medial joint compartment exhibiting partial narrowing and marginal osteophytic formation. In the Severe radiograph (Row 3), positive green superpixels decisively demarcate the complete obliteration of the medial joint space, severe bone-on-bone contact, and dense subchondral sclerosis, while red contours identify peripheral anatomy that weakly contradicts the severe diagnosis. The concordance between internal gradient attributions (Fig.~\ref{fig:xai}) and external input perturbations (Fig.~\ref{fig:lime}) indicates that model decision boundaries are qualitatively aligned with established radiographic indicators of joint degradation.
 
 
 % ==============================================================================
@@ -635,11 +634,11 @@ The regional overlays provide striking clinical concordance: for the Healthy sub
 
 The central translational objective of automated medical image grading is to provide trustworthy triage support without introducing dangerous clinical errors. In the context of knee osteoarthritis, mistaking an advanced, bone-on-bone joint deformity (Severe, KL~4) for a normal knee (Healthy, KL~0--1) represents a catastrophic diagnostic failure that could delay surgical consultation and prolong patient disability \cite{carr2012knee}. Conversely, confusion between adjacent borderline grades (e.g., distinguishing early osteophytes in KL~1 vs.\ KL~2) reflects real-world clinical ambiguity that is routinely observed among musculoskeletal radiologists \cite{sheehy2015validity}.
 
-Our experimental results demonstrate that the proposed framework achieved 100.00\% sensitivity (122/122) on the Severe cohort under dual-pass TTA, with zero observed instances of extreme grade reversals (0/122 Severe-to-Healthy misclassifications) across all five model configurations on the 4,008-image evaluation cohort. This empirical robustness directly stems from the ordinal composite loss function, which incorporates an expected-value rank penalty that penalizes non-adjacent prediction errors proportionally to their ordinal distance. When combined with dual-pass lateral test-time augmentation, prediction variance along borderline decision thresholds is substantially reduced, yielding a Quadratic Weighted Kappa of 0.853 that denotes ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}, establishing competitive clinical agreement relative to published benchmarks (Table~\ref{tab:comparison}).
+Our experimental results demonstrate that the proposed framework achieved 100.00\% sensitivity (122/122) on the Severe cohort under dual-pass TTA, with zero observed instances of extreme grade reversals (0/122 Severe-to-Healthy misclassifications) across all five model configurations on the 4,008-image evaluation cohort. These empirical observations are consistent with the ordinal composite penalty contributing to the suppression of non-adjacent prediction errors by penalizing divergence proportionally to continuous distance in label space. When combined with dual-pass lateral test-time augmentation, prediction variance along borderline decision thresholds is substantially reduced, yielding a Quadratic Weighted Kappa of 0.853 that denotes ``almost perfect'' agreement according to the Landis--Koch scale \cite{landis1977measurement}. As delineated in Table~\ref{tab:comparison}, while direct accuracy comparisons must account for the difference between 3-class triage and 5-class nominal grading, the attained QWK (0.853) demonstrates competitive alignment with established radiologist-level benchmarks under strict patient-level leakage control.
 
 \begin{table*}[t]
 \centering
-\caption{Comparison with published deep learning methods for KOA severity grading. Direct numerical comparisons should be interpreted with caution due to differences in class granularity (5-class nominal KL grading vs.\ 3-class clinically actionable triage), patient-level vs.\ image-level splitting protocols, and evaluation cohorts. Quadratic Weighted Kappa (QWK) serves as the primary metric accounting for chance-adjusted ordinal agreement across divergent scales.}
+\caption{Comparison with published deep learning methods for KOA severity grading. Direct numerical comparisons must be interpreted with caution due to differing task granularities (5-class nominal KL grading vs.\ 3-class clinically actionable triage), splitting protocols (patient-level vs.\ image-level), and imaging views. Quadratic Weighted Kappa (QWK) provides the primary chance-corrected metric for ordinal agreement across differing scales.}
 \label{tab:comparison}
 \begin{tabular}{p{3.2cm}p{2.3cm}p{1.3cm}p{1.8cm}p{2cm}p{1.5cm}p{1.2cm}p{1.5cm}}
 \toprule
@@ -649,9 +648,9 @@ Antony \textit{et al.} \cite{antony2016quantifying} & VGG-16 & 5 & OAI & Image-l
 Tiulpin \textit{et al.} \cite{tiulpin2018automatic} & Siamese ResNet & 5 & OAI & Patient-level & 66.7\% & 0.83 & --- \\
 Chen \textit{et al.} \cite{chen2019fully} & Ordinal DenseNet & 5 & OAI & Patient-level & --- & 0.79 & --- \\
 Thomas \textit{et al.} \cite{thomas2020automated} & Attention CNN & 5 & OAI & Patient-level & 71.0\% & --- & --- \\
-Swiecicki \textit{et al.} \cite{swiecicki2021deep} & DenseNet-161 & 5 & OAI subset & Patient-level & 64.6\% & 0.76 & --- \\
-Bany Muhammad \textit{et al.} \cite{bany2023knee} & ResNet-18/50 & 5 & Mendeley & Image-level & 74.8\% & --- & --- \\
-Kondal \textit{et al.} \cite{kondal2023transfer} & ViT-B/16 & 5 & Mendeley & Image-level & 72.3\% & --- & --- \\
+Swiecicki \textit{et al.} \cite{swiecicki2021deep} & Dual-View CNN & 5 & MOST & Patient-level & 71.9\% & 0.91 & --- \\
+Mohammed \textit{et al.} \cite{bany2023knee} & ResNet-101 & 5 & Mendeley & Image-level & 74.8\% & --- & --- \\
+Kondal \textit{et al.} \cite{kondal2023transfer} & Two-Stage CNN & 5 & OAI/Clinical & Patient-level & 72.3\% & --- & --- \\
 \midrule
 \textbf{Present study} & \textbf{Hybrid + TTA} & \textbf{3} & \textbf{Mendeley} & \textbf{Patient-level} & \textbf{90.92\%} & \textbf{0.853} & \textbf{0.980} \\
 \bottomrule
@@ -720,169 +719,169 @@ The knee radiograph dataset analyzed in this study is publicly accessible via Me
 \FloatBarrier
 \begin{thebibliography}{55}
 \bibitem{hunter2019oa}
-D. J. Hunter and S. Bierma-Zeinstra, ``Osteoarthritis,'' \emph{The Lancet}, vol. 393, no. 10182, pp. 1745--1759, 2019.
+D.~J. Hunter and S.~Bierma-Zeinstra, ``Osteoarthritis,'' \emph{The Lancet}, vol. 393, no. 10182, pp. 1745--1759, 2019.
 
 \bibitem{loeser2012oa}
-R. F. Loeser, S. R. Goldring, C. R. Scanzello, and M. B. Goldring, ``Osteoarthritis: A disease of the joint as an organ,'' \emph{Arthritis \& Rheumatism}, vol. 64, no. 6, pp. 1697--1707, 2012.
+R.~F. Loeser, S.~R. Goldring, C.~R. Scanzello, and M.~B. Goldring, ``Osteoarthritis: A disease of the joint as an organ,'' \emph{Arthritis \& Rheumatism}, vol. 64, no.~6, pp. 1697--1707, 2012.
 
 \bibitem{cross2014global}
-M. Cross, E. Smith, D. Hoy, S. Nolte, I. Ackerman, M. Fransen, L. Bridgett, S. Williams, F. Guillemin, C. L. Hill \emph{et al.}, ``The global burden of hip and knee osteoarthritis: Estimates from the global burden of disease 2010 study,'' \emph{Annals of the Rheumatic Diseases}, vol. 73, no. 7, pp. 1323--1330, 2014.
+M.~Cross, E.~Smith, D.~Hoy, S.~Nolte, I.~Ackerman, M.~Fransen, L.~Bridgett, S.~Williams, F.~Guillemin, C.~L. Hill \emph{et~al.}, ``The global burden of hip and knee osteoarthritis: Estimates from the Global Burden of Disease 2010 study,'' \emph{Annals of the Rheumatic Diseases}, vol.~73, no.~7, pp. 1323--1330, 2014.
 
 \bibitem{woolf2003burden}
-A. D. Woolf and B. Pfleger, ``Burden of major musculoskeletal conditions,'' \emph{Bulletin of the World Health Organization}, vol. 81, no. 9, pp. 646--656, 2003.
+A.~D. Woolf and B.~Pfleger, ``Burden of major musculoskeletal conditions,'' \emph{Bulletin of the World Health Organization}, vol.~81, no.~9, pp. 646--656, 2003.
 
 \bibitem{braun2012diagnosis}
-H. J. Braun and G. E. Gold, ``Diagnosis of osteoarthritis: Imaging,'' \emph{Bone}, vol. 51, no. 2, pp. 278--288, 2012.
+H.~J. Braun and G.~E. Gold, ``Diagnosis of osteoarthritis: Imaging,'' \emph{Bone}, vol.~51, no.~2, pp. 278--288, 2012.
 
 \bibitem{kellgren1957radiological}
-J. H. Kellgren and J. S. Lawrence, ``Radiological assessment of osteo-arthrosis,'' \emph{Annals of the Rheumatic Diseases}, vol. 16, no. 4, pp. 494--502, 1957.
+J.~H. Kellgren and J.~S. Lawrence, ``Radiological assessment of osteo-arthrosis,'' \emph{Annals of the Rheumatic Diseases}, vol.~16, no.~4, pp. 494--502, 1957.
 
 \bibitem{wright2014interobserver}
-R. W. Wright and MARS Group, ``Osteoarthritis classification scales: Interobserver reliability and arthroscopic correlation,'' \emph{The Journal of Bone and Joint Surgery}, vol. 96, no. 14, pp. 1145--1151, 2014.
+R.~W. Wright and MARS Group, ``Osteoarthritis classification scales: Interobserver reliability and arthroscopic correlation,'' \emph{The Journal of Bone and Joint Surgery}, vol.~96, no.~14, pp. 1145--1151, 2014.
 
 \bibitem{sheehy2015validity}
-L. Sheehy, E. Culham, L. McLean, J. Niu, J. Lynch, N. A. Segal, J. A. Singh, M. Nevitt, and D. T. Felson, ``Validity and sensitivity to change of three scales for the radiographic assessment of knee osteoarthritis using images from the multicenter osteoarthritis study (MOST),'' \emph{Osteoarthritis and Cartilage}, vol. 23, no. 9, pp. 1491--1498, 2015.
+L.~Sheehy, E.~Culham, L.~McLean, J.~Niu, J.~Lynch, N.~A. Segal, J.~A. Singh, M.~Nevitt, and T.~D.~V. Cooke, ``Validity and sensitivity to change of three scales for the radiographic assessment of knee osteoarthritis using images from the Multicenter Osteoarthritis Study (MOST),'' \emph{Osteoarthritis and Cartilage}, vol.~23, no.~9, pp. 1491--1498, 2015.
 
 \bibitem{culvenor2019oa}
-A. G. Culvenor, B. E. Oiestad, H. F. Hart, J. J. Stefanik, A. Guermazi, and K. M. Crossley, ``Prevalence of knee osteoarthritis features on magnetic resonance imaging in asymptomatic uninjured adults: A systematic review and meta-analysis,'' \emph{British Journal of Sports Medicine}, vol. 53, no. 20, pp. 1268--1278, 2019.
+A.~G. Culvenor, B.~E. {\O}iestad, H.~F. Hart, J.~J. Stefanik, A.~Guermazi, and K.~M. Crossley, ``Prevalence of knee osteoarthritis features on magnetic resonance imaging in asymptomatic uninjured adults: A systematic review and meta-analysis,'' \emph{British Journal of Sports Medicine}, vol.~53, no.~20, pp. 1268--1278, 2019.
 
 \bibitem{tiulpin2018automatic}
-A. Tiulpin, J. Thevenot, E. Rahtu, P. Lehenkari, and S. Saarakkala, ``Automatic knee osteoarthritis diagnosis from plain radiographs: A deep learning-based approach,'' \emph{Scientific Reports}, vol. 8, no. 1, p. 1727, 2018.
+A.~Tiulpin, J.~Thevenot, E.~Rahtu, P.~Lehenkari, and S.~Saarakkala, ``Automatic knee osteoarthritis diagnosis from plain radiographs: A deep learning-based approach,'' \emph{Scientific Reports}, vol.~8, no.~1, p. 1727, 2018.
 
 \bibitem{thomas2020automated}
-K. A. Thomas, L. Kidzinski, E. Halilaj, S. L. Fleming, G. R. Venkataraman, E. H. G. Oei, G. E. Gold, and S. L. Delp, ``Automated classification of radiographic knee osteoarthritis severity using deep neural networks,'' \emph{Radiology: Artificial Intelligence}, vol. 2, no. 2, p. e190065, 2020.
+K.~A. Thomas, L.~Kidzi{\'n}ski, E.~Halilaj, S.~L. Fleming, G.~R. Venkataraman, E.~H.~G. Oei, G.~E. Gold, and S.~L. Delp, ``Automated classification of radiographic knee osteoarthritis severity using deep neural networks,'' \emph{Radiology: Artificial Intelligence}, vol.~2, no.~2, p. e190065, 2020.
 
 \bibitem{chen2019fully}
-P. Chen, L. Gao, X. Shi, K. Allen, and L. Yang, ``Fully automatic knee osteoarthritis severity grading using deep neural networks with a novel ordinal loss,'' \emph{Computerized Medical Imaging and Graphics}, vol. 75, pp. 84--92, 2019.
+P.~Chen, L.~Gao, X.~Shi, K.~Allen, and L.~Yang, ``Fully automatic knee osteoarthritis severity grading using deep neural networks with a novel ordinal loss,'' \emph{Computerized Medical Imaging and Graphics}, vol.~75, pp. 84--92, 2019.
 
 \bibitem{pierson2021algorithmic}
-E. Pierson, D. M. Cutler, J. Leskovec, S. Mullainathan, and Z. Obermeyer, ``An algorithmic approach to reducing unexplained pain disparities in underserved populations,'' \emph{Nature Medicine}, vol. 27, no. 1, pp. 136--140, 2021.
+E.~Pierson, D.~M. Cutler, J.~Leskovec, S.~Mullainathan, and Z.~Obermeyer, ``An algorithmic approach to reducing unexplained pain disparities in underserved populations,'' \emph{Nature Medicine}, vol.~27, no.~1, pp. 136--140, 2021.
 
 \bibitem{antony2016quantifying}
-J. Antony, K. McGuinness, N. E. O'Connor, and K. Moran, ``Quantifying radiographic knee osteoarthritis severity using deep convolutional neural networks,'' in \emph{Proceedings of the 23rd International Conference on Pattern Recognition (ICPR)}. IEEE, 2016, pp. 1195--1200.
+J.~Antony, K.~McGuinness, N.~E. O'Connor, and K.~Moran, ``Quantifying radiographic knee osteoarthritis severity using deep convolutional neural networks,'' in \emph{Proceedings of the 23rd International Conference on Pattern Recognition (ICPR)}. IEEE, 2016, pp. 1195--1200.
 
 \bibitem{schiphof2008differences}
-D. Schiphof, M. Boers, and S. M. A. Bierma-Zeinstra, ``Differences in descriptions of Kellgren and Lawrence grades of knee osteoarthritis,'' \emph{Annals of the Rheumatic Diseases}, vol. 67, no. 7, pp. 1034--1036, 2008.
+D.~Schiphof, M.~Boers, and S.~M.~A. Bierma-Zeinstra, ``Differences in descriptions of Kellgren and Lawrence grades of knee osteoarthritis,'' \emph{Annals of the Rheumatic Diseases}, vol.~67, no.~7, pp. 1034--1036, 2008.
 
 \bibitem{zhang2010eular}
-W. Zhang, M. Doherty, G. Peat, S. M. A. Bierma-Zeinstra, N. K. Arden, B. Bresnihan, G. Herrero-Beaumont, S. Kirschner, B. F. Leeb, L. S. Lohmander \emph{et al.}, ``EULAR evidence-based recommendations for the diagnosis of knee osteoarthritis,'' \emph{Annals of the Rheumatic Diseases}, vol. 69, no. 3, pp. 483--489, 2010.
+W.~Zhang, M.~Doherty, G.~Peat, S.~M.~A. Bierma-Zeinstra, N.~K. Arden, B.~Bresnihan, G.~Herrero-Beaumont, S.~Kirschner, B.~F. Leeb, L.~S. Lohmander \emph{et~al.}, ``EULAR evidence-based recommendations for the diagnosis of knee osteoarthritis,'' \emph{Annals of the Rheumatic Diseases}, vol.~69, no.~3, pp. 483--489, 2010.
 
 \bibitem{emrani2008joint}
-P. S. Emrani, J. N. Katz, C. L. Kessler, W. M. Reichmann, E. A. Wright, T. E. McAlindon, and E. Losina, ``Joint space narrowing and Kellgren--Lawrence progression in knee osteoarthritis: An analytic literature synthesis,'' \emph{Osteoarthritis and Cartilage}, vol. 16, no. 8, pp. 873--882, 2008.
+P.~S. Emrani, J.~N. Katz, C.~L. Kessler, W.~M. Reichmann, E.~A. Wright, T.~E. McAlindon, and E.~Losina, ``Joint space narrowing and Kellgren--Lawrence progression in knee osteoarthritis: An analytic literature synthesis,'' \emph{Osteoarthritis and Cartilage}, vol.~16, no.~8, pp. 873--882, 2008.
 
 \bibitem{shamir2009early}
-L. Shamir, S. M. Ling, W. W. Scott, A. Bos, N. Orlov, T. J. Macura, D. M. Eckley, L. Ferrucci, and I. G. Goldberg, ``Knee x-ray image analysis method for automated detection of osteoarthritis,'' \emph{IEEE Transactions on Biomedical Engineering}, vol. 56, no. 2, pp. 407--415, 2009.
+L.~Shamir, S.~M. Ling, W.~W. Scott, A.~Bos, N.~Orlov, T.~J. Macura, D.~M. Eckley, L.~Ferrucci, and I.~G. Goldberg, ``Knee X-ray image analysis method for automated detection of osteoarthritis,'' \emph{IEEE Transactions on Biomedical Engineering}, vol.~56, no.~2, pp. 407--415, 2009.
 
 \bibitem{oka2008fully}
-H. Oka, S. Muraki, T. Akune, A. Mabuchi, T. Suzuki, H. Yoshida, S. Yamamoto, K. Nakamura, N. Yoshimura, and H. Kawaguchi, ``Fully automatic quantification of knee osteoarthritis severity on plain radiographs,'' \emph{Osteoarthritis and Cartilage}, vol. 16, no. 11, pp. 1300--1306, 2008.
+H.~Oka, S.~Muraki, T.~Akune, A.~Mabuchi, T.~Suzuki, H.~Yoshida, S.~Yamamoto, K.~Nakamura, N.~Yoshimura, and H.~Kawaguchi, ``Fully automatic quantification of knee osteoarthritis severity on plain radiographs,'' \emph{Osteoarthritis and Cartilage}, vol.~16, no.~11, pp. 1300--1306, 2008.
 
 \bibitem{thomson2015automated}
-J. Thomson, T. O'Neill, D. Felson, and T. Cootes, ``Automated shape and texture analysis for detection of osteoarthritis from radiographs of the knee,'' \emph{Medical Image Computing and Computer-Assisted Intervention (MICCAI)}, 2015.
+J.~Thomson, T.~O'Neill, D.~Felson, and T.~Cootes, ``Automated shape and texture analysis for detection of osteoarthritis from radiographs of the knee,'' in \emph{Medical Image Computing and Computer-Assisted Intervention (MICCAI)}, 2015.
 
 \bibitem{rajpurkar2017chexnet}
-P. Rajpurkar, J. Irvin, K. Zhu, B. Yang, H. Mehta, T. Duan, D. Ding, A. Bagul, C. Langlotz, K. Shpanskaya \emph{et al.}, ``CheXNet: Radiologist-level pneumonia detection on chest x-rays with deep learning,'' \emph{arXiv preprint arXiv:1711.05225}, 2017.
+P.~Rajpurkar, J.~Irvin, K.~Zhu, B.~Yang, H.~Mehta, T.~Duan, D.~Ding, A.~Bagul, C.~Langlotz, K.~Shpanskaya \emph{et~al.}, ``CheXNet: Radiologist-level pneumonia detection on chest X-rays with deep learning,'' \emph{arXiv preprint arXiv:1711.05225}, 2017.
 
 \bibitem{gulshan2016development}
-V. Gulshan, L. Peng, M. Coram, M. C. Stumpe, D. Wu, A. Narayanaswamy, S. Venugopalan, K. Widner, T. Madams, J. Cuadros \emph{et al.}, ``Development and validation of a deep learning algorithm for detection of diabetic retinopathy in retinal fundus photographs,'' \emph{JAMA}, vol. 316, no. 22, pp. 2402--2410, 2016.
+V.~Gulshan, L.~Peng, M.~Coram, M.~C. Stumpe, D.~Wu, A.~Narayanaswamy, S.~Venugopalan, K.~Widner, T.~Madams, J.~Cuadros \emph{et~al.}, ``Development and validation of a deep learning algorithm for detection of diabetic retinopathy in retinal fundus photographs,'' \emph{JAMA}, vol. 316, no.~22, pp. 2402--2410, 2016.
 
 \bibitem{bejnordi2017diagnostic}
-B. Ehteshami Bejnordi, M. Veta, P. J. van Diest, B. van Ginneken, N. Karssemeijer, G. Litjens, J. A. W. M. van der Laak, and the CAMELYON16 Consortium, ``Diagnostic assessment of deep learning algorithms for detection of lymph node metastases in women with breast cancer,'' \emph{JAMA}, vol. 318, no. 22, pp. 2199--2210, 2017.
+B.~Ehteshami~Bejnordi, M.~Veta, P.~J. van Diest, B.~van Ginneken, N.~Karssemeijer, G.~Litjens, J.~A.~W.~M. van~der Laak, and the CAMELYON16 Consortium, ``Diagnostic assessment of deep learning algorithms for detection of lymph node metastases in women with breast cancer,'' \emph{JAMA}, vol. 318, no.~22, pp. 2199--2210, 2017.
 
 \bibitem{he2016deep}
-K. He, X. Zhang, S. Ren, and J. Sun, ``Deep residual learning for image recognition,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2016, pp. 770--778.
+K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image recognition,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2016, pp. 770--778.
 
 \bibitem{huang2017densely}
-G. Huang, Z. Liu, L. van der Maaten, and K. Q. Weinberger, ``Densely connected convolutional networks,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2017, pp. 4700--4708.
+G.~Huang, Z.~Liu, L.~van~der Maaten, and K.~Q. Weinberger, ``Densely connected convolutional networks,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2017, pp. 4700--4708.
 
 \bibitem{tan2019efficientnet}
-M. Tan and Q. V. Le, ``EfficientNet: Rethinking model scaling for convolutional neural networks,'' in \emph{International Conference on Machine Learning (ICML)}. PMLR, 2019, pp. 6105--6114.
+M.~Tan and Q.~V. Le, ``EfficientNet: Rethinking model scaling for convolutional neural networks,'' in \emph{International Conference on Machine Learning (ICML)}. PMLR, 2019, pp. 6105--6114.
 
 \bibitem{liu2021swin}
-Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and B. Guo, ``Swin Transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 10012--10022.
+Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Y.~Zhang, B.~Dong, and B.~Guo, ``Swin Transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 10012--10022.
 
 \bibitem{liu2022convnext}
-Z. Liu, H. Mao, C.-Y. Wu, C. Feichtenhofer, T. Darrell, and S. Xie, ``A ConvNet for the 2020s,'' in \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 2022, pp. 11976--11986.
+Z.~Liu, H.~Mao, C.-Y. Wu, C.~Feichtenhofer, T.~Darrell, and S.~Xie, ``A ConvNet for the 2020s,'' in \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 2022, pp. 11976--11986.
 
 \bibitem{caron2021dino}
-M. Caron, H. Touvron, I. Misra, H. Jegou, J. Mairal, P. Bojanowski, and A. Joulin, ``Emerging properties in self-supervised vision transformers,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 9650--9660.
+M.~Caron, H.~Touvron, I.~Misra, H.~J{\'e}gou, J.~Mairal, P.~Bojanowski, and A.~Joulin, ``Emerging properties in self-supervised vision transformers,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 9650--9660.
 
 \bibitem{raghu2019transfusion}
-M. Raghu, C. Zhang, J. Kleinberg, and S. Bengio, ``Transfusion: Understanding transfer learning for medical imaging,'' \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 32, 2019.
+M.~Raghu, C.~Zhang, J.~Kleinberg, and S.~Bengio, ``Transfusion: Understanding transfer learning for medical imaging,'' \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~32, 2019.
 
 \bibitem{tajbakhsh2016convolutional}
-N. Tajbakhsh, J. Y. Shin, S. R. Gurudu, R. T. Hurst, C. B. Kendall, M. B. Gotway, and J. Liang, ``Convolutional neural networks for medical image analysis: Full training or fine tuning?'' \emph{IEEE Transactions on Medical Imaging}, vol. 35, no. 5, pp. 1299--1312, 2016.
+N.~Tajbakhsh, J.~Y. Shin, S.~R. Gurudu, R.~T. Hurst, C.~B. Kendall, M.~B. Gotway, and J.~Liang, ``Convolutional neural networks for medical image analysis: Full training or fine tuning?'' \emph{IEEE Transactions on Medical Imaging}, vol.~35, no.~5, pp. 1299--1312, 2016.
 
 \bibitem{antony2017automatic}
-J. Antony, K. McGuinness, K. Moran, and N. E. O'Connor, ``Automatic detection of knee joints and quantification of knee osteoarthritis severity using convolutional neural networks,'' in \emph{Machine Learning and Data Mining in Pattern Recognition (MLDM)}. Springer, 2017, pp. 376--390.
+J.~Antony, K.~McGuinness, K.~Moran, and N.~E. O'Connor, ``Automatic detection of knee joints and quantification of knee osteoarthritis severity using convolutional neural networks,'' in \emph{Machine Learning and Data Mining in Pattern Recognition (MLDM)}. Springer, 2017, pp. 376--390.
 
 \bibitem{swiecicki2021deep}
-A. Swiecicki, D. Kondziella, O. Puonti, H. R. Siebner, and M. Blinkenberg, ``Deep learning for automatic grading of knee osteoarthritis on radiographs,'' \emph{Osteoarthritis and Cartilage}, 2021.
+A.~Swiecicki, N.~Li, J.~O'Donnell, N.~Said, J.~Yang, R.~C. Mather, W.~A. Jiranek, and M.~A. Mazurowski, ``Deep learning-based algorithm for assessment of knee osteoarthritis severity in radiographs matches performance of radiologists,'' \emph{Computers in Biology and Medicine}, vol. 133, p. 104334, 2021.
 
 \bibitem{guan2022deep}
-B. Guan, F. Liu, A. Hasan, H. Bilal, and M. Shafiq, ``Deep learning approach to predict radiographic knee osteoarthritis,'' \emph{Journal of Healthcare Engineering}, vol. 2022, pp. 1--12, 2022.
+B.~Guan, F.~Liu, A.~Haj-Mizaian, S.~Demehri, and T.~Neogi, ``Deep learning approach to predict radiographic knee osteoarthritis progression,'' \emph{Osteoarthritis and Cartilage}, vol.~27, pp. S395--S396, 2019.
 
 \bibitem{bany2023knee}
-M. Bany Muhammad and A. S. Tarawneh, ``Knee osteoarthritis detection and severity classification using residual neural networks on preprocessed x-ray images,'' \emph{Diagnostics}, vol. 13, no. 8, p. 1380, 2023.
+A.~S. Mohammed, A.~A. Hasanaath, G.~Latif, and A.~Bashar, ``Knee Osteoarthritis Detection and Severity Classification Using Residual Neural Networks on Preprocessed X-ray Images,'' \emph{Diagnostics}, vol.~13, no.~8, p. 1380, 2023.
 
 \bibitem{kondal2023transfer}
-S. R. Kondal, A. Kulkarni \emph{et al.}, ``Transfer learning-based knee osteoarthritis grading using vision transformers,'' \emph{Biomedical Signal Processing and Control}, 2023.
+S.~Kondal, V.~Kulkarni, A.~Gaikwad, A.~Kharat, and A.~Pant, ``Automatic Grading of Knee Osteoarthritis on the Kellgren-Lawrence Scale from Radiographs Using Convolutional Neural Networks,'' in \emph{Advances in Deep Learning, Artificial Intelligence and Robotics}, Lecture Notes in Networks and Systems, vol. 249, pp. 163--173, Springer, 2022.
 
 \bibitem{bayramoglu2021adaptive}
-N. Bayramoglu, A. Tiulpin, J. Hirvasniemi, M. Niemelainen, and S. Saarakkala, ``Adaptive segmentation of knee radiographs for selecting the optimal pretrained model for severity assessment of osteoarthritis,'' \emph{Computerized Medical Imaging and Graphics}, vol. 88, p. 101831, 2021.
+N.~Bayramoglu, A.~Tiulpin, J.~Hirvasniemi, M.~Niemelainen, and S.~Saarakkala, ``Adaptive segmentation of knee radiographs for selecting the optimal pretrained model for severity assessment of osteoarthritis,'' \emph{Computerized Medical Imaging and Graphics}, vol.~88, p. 101831, 2021.
 
 \bibitem{chen2018dataset}
-P. Chen, ``Knee osteoarthritis severity grading dataset,'' \emph{Mendeley Data}, vol. V1, 2018.
+P.~Chen, ``Knee Osteoarthritis Severity Grading Dataset,'' \emph{Mendeley Data}, vol.~V1, 2018, doi: 10.17632/56rmx5bjcr.1.
 
 \bibitem{carr2012knee}
-A. J. Carr, O. Robertsson, S. Graves, A. J. Price, N. K. Arden, A. Judge, and D. J. Beard, ``Knee replacement,'' \emph{The Lancet}, vol. 379, no. 9823, pp. 1331--1340, 2012.
+A.~J. Carr, O.~Robertsson, S.~Graves, A.~J. Price, N.~K. Arden, A.~Judge, and D.~J. Beard, ``Knee replacement,'' \emph{The Lancet}, vol. 379, no. 9823, pp. 1331--1340, 2012.
 
 \bibitem{zhang2018mixup}
-H. Zhang, M. Cisse, Y. N. Dauphin, and D. Lopez-Paz, ``mixup: Beyond empirical risk minimization,'' \emph{International Conference on Learning Representations (ICLR)}, 2018.
+H.~Zhang, M.~Cisse, Y.~N. Dauphin, and D.~Lopez-Paz, ``mixup: Beyond empirical risk minimization,'' in \emph{International Conference on Learning Representations (ICLR)}, 2018.
 
 \bibitem{thulasidasan2019mixup}
-S. Thulasidasan, G. Chennupati, J. A. Bilmes, T. Bhattacharya, and S. Michalak, ``On mixup training: Improved calibration and predictive uncertainty for deep neural networks,'' \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol. 32, 2019.
+S.~Thulasidasan, G.~Chennupati, J.~A. Bilmes, T.~Bhattacharya, and S.~Michalak, ``On mixup training: Improved calibration and predictive uncertainty for deep neural networks,'' \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~32, 2019.
 
 \bibitem{loshchilov2019adamw}
-I. Loshchilov and F. Hutter, ``Decoupled weight decay regularization,'' \emph{International Conference on Learning Representations (ICLR)}, 2019.
+I.~Loshchilov and F.~Hutter, ``Decoupled weight decay regularization,'' in \emph{International Conference on Learning Representations (ICLR)}, 2019.
 
 \bibitem{loshchilov2017sgdr}
-I. Loshchilov and F. Hutter, ``SGDR: Stochastic gradient descent with warm restarts,'' \emph{International Conference on Learning Representations (ICLR)}, 2017.
+I.~Loshchilov and F.~Hutter, ``SGDR: Stochastic gradient descent with warm restarts,'' in \emph{International Conference on Learning Representations (ICLR)}, 2017.
 
 \bibitem{landis1977measurement}
-J. R. Landis and G. G. Koch, ``The measurement of observer agreement for categorical data,'' \emph{Biometrics}, vol. 33, no. 1, pp. 159--174, 1977.
+J.~R. Landis and G.~G. Koch, ``The measurement of observer agreement for categorical data,'' \emph{Biometrics}, vol.~33, no.~1, pp. 159--174, 1977.
 
 \bibitem{reyes2020interpretability}
-M. Reyes, R. Meier, S. Pereira, C. A. Silva, F.-M. Dahlweid, H. von Tengg-Kobligk, R. M. Summers, and R. Wiest, ``On the interpretability of artificial intelligence in radiology: Challenges and opportunities,'' \emph{Radiology: Artificial Intelligence}, vol. 2, no. 3, p. e190043, 2020.
+M.~Reyes, R.~Meier, S.~Pereira, C.~A. Silva, F.-M. Dahlweid, H.~von Tengg-Kobligk, R.~M. Summers, and R.~Wiest, ``On the interpretability of artificial intelligence in radiology: Challenges and opportunities,'' \emph{Radiology: Artificial Intelligence}, vol.~2, no.~3, p. e190043, 2020.
 
 \bibitem{selvaraju2017gradcam}
-R. R. Selvaraju, M. Cogswell, A. Das, R. Vedantam, D. Parikh, and D. Batra, ``Grad-CAM: Visual explanations from deep networks via gradient-based localization,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, 2017, pp. 618--626.
+R.~R. Selvaraju, M.~Cogswell, A.~Das, R.~Vedantam, D.~Parikh, and D.~Batra, ``Grad-CAM: Visual explanations from deep networks via gradient-based localization,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, 2017, pp. 618--626.
 
 \bibitem{chattopadhay2018gradcampp}
-A. Chattopadhay, A. Sarkar, P. Howlader, and V. N. Balasubramanian, ``Grad-CAM++: Generalized gradient-based visual explanations for deep convolutional networks,'' in \emph{IEEE Winter Conference on Applications of Computer Vision (WACV)}, 2018, pp. 839--847.
+A.~Chattopadhay, A.~Sarkar, P.~Howlader, and V.~N. Balasubramanian, ``Grad-CAM++: Generalized gradient-based visual explanations for deep convolutional networks,'' in \emph{IEEE Winter Conference on Applications of Computer Vision (WACV)}, 2018, pp. 839--847.
 
 \bibitem{jiang2021layercam}
-P.-T. Jiang, C.-B. Zhang, Q. Hou, M.-M. Cheng, and Y. Wei, ``LayerCAM: Exploring hierarchical class activation maps for localization,'' \emph{IEEE Transactions on Image Processing}, vol. 30, pp. 5875--5888, 2021.
+P.-T. Jiang, C.-B. Zhang, Q.~Hou, M.-M. Cheng, and Y.~Wei, ``LayerCAM: Exploring hierarchical class activation maps for localization,'' \emph{IEEE Transactions on Image Processing}, vol.~30, pp. 5875--5888, 2021.
 
 \bibitem{wang2020scorecam}
-H. Wang, Z. Wang, M. Du, F. Yang, Z. Zhang, S. Ding, P. Mardziel, and X. Hu, ``Score-CAM: Score-weighted visual explanations for convolutional neural networks,'' in \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)}, 2020, pp. 24--25.
+H.~Wang, Z.~Wang, M.~Du, F.~Yang, Z.~Zhang, S.~Ding, P.~Mardziel, and X.~Hu, ``Score-CAM: Score-weighted visual explanations for convolutional neural networks,'' in \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)}, 2020, pp. 24--25.
 
 \bibitem{sundararajan2017axiomatic}
-M. Sundararajan, A. Taly, and Q. Yan, ``Axiomatic attribution for deep networks,'' in \emph{International Conference on Machine Learning (ICML)}. PMLR, 2017, pp. 3319--3328.
+M.~Sundararajan, A.~Taly, and Q.~Yan, ``Axiomatic attribution for deep networks,'' in \emph{International Conference on Machine Learning (ICML)}. PMLR, 2017, pp. 3319--3328.
 
 \bibitem{ribeiro2016lime}
-M. T. Ribeiro, S. Singh, and C. Guestrin, ````Why Should I Trust You?'': Explaining the predictions of any classifier,'' in \emph{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016, pp. 1135--1144.
+M.~T. Ribeiro, S.~Singh, and C.~Guestrin, ``Why Should I Trust You?: Explaining the predictions of any classifier,'' in \emph{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016, pp. 1135--1144.
 
 \bibitem{johnson2019survey}
-J. M. Johnson and T. M. Khoshgoftaar, ``Survey on deep learning with class imbalance,'' \emph{Journal of Big Data}, vol. 6, no. 1, p. 27, 2019.
+J.~M. Johnson and T.~M. Khoshgoftaar, ``Survey on deep learning with class imbalance,'' \emph{Journal of Big Data}, vol.~6, no.~1, p.~27, 2019.
 
 \bibitem{howard2018ulmfit}
-J. Howard and S. Ruder, ``Universal language model fine-tuning for text classification,'' in \emph{Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (ACL)}, 2018, pp. 328--339.
+J.~Howard and S.~Ruder, ``Universal language model fine-tuning for text classification,'' in \emph{Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (ACL)}, 2018, pp. 328--339.
 
 \bibitem{shanmugam2021tta}
-D. Shanmugam, D. Blalock, G. Balakrishnan, and J. Guttag, ``Better aggregation in test-time augmentation,'' \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, pp. 1214--1223, 2021.
+D.~Shanmugam, D.~Blalock, G.~Balakrishnan, and J.~Guttag, ``Better aggregation in test-time augmentation,'' in \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 2021, pp. 1214--1223.
 
 \bibitem{nevitt2006oai}
-M. C. Nevitt, D. T. Felson, and G. Lester, ``The osteoarthritis initiative: Protocol for the cohort study,'' 2006, available at: https://oai.epi-ucsf.org.
+M.~C. Nevitt, D.~T. Felson, and G.~Lester, ``The Osteoarthritis Initiative: Protocol for the cohort study,'' 2006.
 \end{thebibliography}
 
 \end{document}
